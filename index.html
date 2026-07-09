@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SuperLaser FF — Next Gen Stats</title>
+<style>
+  :root {
+    --surface-1:      #fcfcfb;
+    --page-plane:      #f9f9f7;
+    --text-primary:    #0b0b0b;
+    --text-secondary:  #52514e;
+    --text-muted:      #898781;
+    --gridline:        #e1e0d9;
+    --border:          rgba(11,11,11,0.10);
+    --series-1:        #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1:      #1a1a19;
+      --page-plane:      #0d0d0d;
+      --text-primary:    #ffffff;
+      --text-secondary:  #c3c2b7;
+      --text-muted:      #898781;
+      --gridline:        #2c2c2a;
+      --border:          rgba(255,255,255,0.10);
+      --series-1:        #3987e5;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 64px;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0 0 20px;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .controls select,
+  .controls input {
+    background: var(--surface-1);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .controls input[type="search"] {
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .status {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 4px 0 16px;
+  }
+
+  .table-wrap {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+  }
+
+  th, td {
+    padding: 8px 12px;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--gridline);
+  }
+
+  th:first-child, td:first-child,
+  th:nth-child(2), td:nth-child(2),
+  th:nth-child(3), td:nth-child(3) {
+    text-align: left;
+  }
+
+  td {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+
+  th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    background: var(--surface-1);
+  }
+
+  th:hover { color: var(--text-primary); }
+
+  th.sorted { color: var(--series-1); }
+
+  th .arrow {
+    display: inline-block;
+    width: 10px;
+  }
+
+  tbody tr:hover {
+    background: color-mix(in srgb, var(--series-1) 6%, transparent);
+  }
+
+  .empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Next Gen Stats</h1>
+  <p class="subtitle">Player-level weekly stats from NFL Next Gen Stats, via nflverse.</p>
+
+  <div class="controls">
+    <select id="statType"></select>
+    <select id="season"></select>
+    <input id="search" type="search" placeholder="Search player…" />
+  </div>
+
+  <p class="status" id="status"></p>
+
+  <div class="table-wrap">
+    <table id="table">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden></div>
+  </div>
+</main>
+<script type="module" src="main.js"></script>
+</body>
+</html>
