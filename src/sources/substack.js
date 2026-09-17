@@ -3,6 +3,13 @@
 // exposes a standard RSS 2.0 feed at "<publication>/feed" with no auth
 // required, so we pull those feeds and match the topic keyword against
 // each post's title/description.
+//
+// The feed list is SUBSTACK_FEEDS (env) plus whatever's been "kept" via
+// the discovery UI (persisted in data/substack-feeds.json, see
+// substackStore.js) — env feeds are always included, kept ones are
+// user-managed at runtime.
+
+import { listFollowing } from "../substackStore.js";
 
 function stripCdata(raw) {
   const match = raw.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
@@ -49,18 +56,20 @@ async function fetchFeed(feedUrl) {
 }
 
 export async function fetchSubstack(topic, { limit = 10 } = {}) {
-  const feedsEnv = process.env.SUBSTACK_FEEDS;
-  if (!feedsEnv) {
-    return {
-      items: [],
-      error: "Not configured: set SUBSTACK_FEEDS (comma-separated feed URLs) to enable Substack.",
-    };
-  }
-
-  const feedUrls = feedsEnv
+  const envFeeds = (process.env.SUBSTACK_FEEDS || "")
     .split(",")
     .map((url) => url.trim())
     .filter(Boolean);
+  const followedFeeds = listFollowing().map((p) => p.feedUrl);
+
+  const feedUrls = [...new Set([...envFeeds, ...followedFeeds])];
+
+  if (!feedUrls.length) {
+    return {
+      items: [],
+      error: "No Substack sources yet — set SUBSTACK_FEEDS in .env, or use Discover to find and keep publications.",
+    };
+  }
 
   const needle = topic.toLowerCase();
   const items = [];

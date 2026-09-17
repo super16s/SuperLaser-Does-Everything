@@ -27,11 +27,18 @@ skipped:
   there's no free or reliable scraping alternative, so this is the one
   source that costs money to enable. Recent search only covers the last
   ~7 days.
-- **Substack** — needs `SUBSTACK_FEEDS`, a comma-separated list of the
-  publications' RSS feed URLs (`https://<publication>.substack.com/feed`).
-  Substack has no public search API, so the app pulls each publication's
-  feed directly and filters posts whose title/description mention the
-  topic. Add the specific publications you follow.
+- **Substack** — has two ways to build the list of publications it reads
+  from, and both can be used together:
+  - `SUBSTACK_FEEDS` in `.env`, a comma-separated list of feed URLs
+    (`https://<publication>.substack.com/feed`), for publications you
+    already know you want.
+  - The **Discover** panel in the UI (click "Substack: discover writers by
+    topic"): search a topic, and any matching publications found get a
+    "+ Keep" button. Keeping one saves it to `data/substack-feeds.json`
+    (git-ignored) so it's included in every future topic search, and you
+    can remove it again from the Following list. This is the only way to
+    find *new* publications by topic rather than ones you already follow —
+    see the note below on how it works.
 - **Mastodon** — works out of the box against `https://mastodon.social`
   (or set `MASTODON_INSTANCE` to your home instance) by matching the topic
   as a hashtag against that instance's public timeline. Set
@@ -48,12 +55,33 @@ No frameworks or npm dependencies — a small Node `http` server
 platform's response into `{ source, author, text, url, publishedAt }`, and
 returns everything merged and sorted by time.
 
-### Limitations to know about
+Substack discovery is separate: `GET /api/substack/discover?topic=...`
+(`src/sources/substackDiscover.js`) and the follow/unfollow endpoints at
+`/api/substack/following` (`src/substackStore.js`) manage the persisted
+list that `src/sources/substack.js` reads from alongside `SUBSTACK_FEEDS`.
+
+### A note on Substack discovery specifically
+
+Substack has no official, documented search API — full stop. The Discover
+panel works by calling the same internal endpoint Substack's own website
+uses for its search box. That's the only way to search Substack by topic
+without already knowing which publications to look at, but it comes with
+real caveats:
+
+- It's undocumented. Substack can change its shape, rate-limit it, or block
+  it outright at any time, with no notice and no changelog to check.
+- The parser is written defensively (it scans the response for
+  publication-shaped data rather than assuming one exact JSON structure) so
+  minor changes shouldn't break it, but a bigger change might make it
+  return nothing until the code is updated.
+- If it stops working, `SUBSTACK_FEEDS` in `.env` still works as a manual
+  fallback — it only depends on Substack's public RSS feeds, which are a
+  stable, documented feature.
+
+### Other limitations to know about
 
 - X's search API is paid and rate-limited; heavy topic-switching can burn
   through your monthly quota fast.
-- Substack filtering only sees the publications you list — it can't
-  discover new ones for a topic, since there's no Substack-wide search API.
 - Mastodon's federated network means a single instance's timeline/search
   only sees what that instance knows about, not all of Mastodon.
 

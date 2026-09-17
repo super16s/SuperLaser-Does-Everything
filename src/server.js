@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { aggregate, ALL_SOURCES } from "./aggregate.js";
+import { discoverSubstack } from "./sources/substackDiscover.js";
+import { listFollowing, followPublication, unfollowPublication } from "./substackStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,19 +39,70 @@ async function handleFeed(req, res, url) {
   const sources = sourcesParam ? sourcesParam.split(",").map((s) => s.trim()) : ALL_SOURCES;
 
   if (!topic) {
-    res.writeHead(400, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Query parameter 'topic' is required." }));
+    sendJson(res, 400, { error: "Query parameter 'topic' is required." });
     return;
   }
 
   try {
     const result = await aggregate(topic, sources);
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(result));
+    sendJson(res, 200, result);
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: err.message }));
+    sendJson(res, 500, { error: err.message });
   }
+}
+
+function sendJson(res, status, body) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (!chunks.length) return {};
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+async function handleDiscover(req, res, url) {
+  const topic = (url.searchParams.get("topic") || "").trim();
+  if (!topic) {
+    sendJson(res, 400, { error: "Query parameter 'topic' is required." });
+    return;
+  }
+  const result = await discoverSubstack(topic);
+  sendJson(res, 200, result);
+}
+
+async function handleFollowing(req, res) {
+  if (req.method === "GET") {
+    sendJson(res, 200, { publications: listFollowing() });
+    return;
+  }
+
+  if (req.method === "POST") {
+    try {
+      const body = await readJsonBody(req);
+      const list = await followPublication(body);
+      sendJson(res, 200, { publications: list });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  if (req.method === "DELETE") {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.feedUrl) throw new Error("feedUrl is required");
+      const list = unfollowPublication(body.feedUrl);
+      sendJson(res, 200, { publications: list });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  sendJson(res, 405, { error: "Method not allowed" });
 }
 
 function serveStatic(req, res, pathname) {
@@ -72,6 +125,16 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === "/api/feed") {
     handleFeed(req, res, url);
+    return;
+  }
+
+  if (url.pathname === "/api/substack/discover") {
+    handleDiscover(req, res, url);
+    return;
+  }
+
+  if (url.pathname === "/api/substack/following") {
+    handleFollowing(req, res);
     return;
   }
 
