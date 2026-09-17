@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Topic Feed</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --border: #d8d8d8;
+    --muted: #6b6b6b;
+    --accent: #2f6fed;
+    --bg-card: #fff;
+    --bg-page: #f6f6f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --border: #3a3a3a;
+      --muted: #9a9a9a;
+      --bg-card: #1e1e1f;
+      --bg-page: #121212;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg-page);
+    color: inherit;
+  }
+  header {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 12px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 12px; }
+  form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--bg-card);
+    color: inherit;
+  }
+  button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .sources {
+    display: flex;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .sources label { display: flex; align-items: center; gap: 5px; }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 12px 16px 48px;
+  }
+  .status-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .status-bar span.err { color: #d0453d; }
+  .item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .item-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-right: 6px;
+  }
+  .badge-x { background: #000; color: #fff; }
+  .badge-substack { background: #ff6719; color: #fff; }
+  .badge-mastodon { background: #6364ff; color: #fff; }
+  .item a { color: var(--accent); text-decoration: none; }
+  .item a:hover { text-decoration: underline; }
+  .empty, .loading { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Topic Feed</h1>
+  <form id="feed-form">
+    <input type="text" id="topic" placeholder="Search a topic (e.g. climate policy)" autocomplete="off" />
+    <button type="submit">Search</button>
+  </form>
+  <div class="sources">
+    <label><input type="checkbox" value="x" checked /> X</label>
+    <label><input type="checkbox" value="substack" checked /> Substack</label>
+    <label><input type="checkbox" value="mastodon" checked /> Mastodon</label>
+  </div>
+</header>
+<main>
+  <div class="status-bar" id="status-bar"></div>
+  <div id="results" class="empty">Enter a topic above to pull matching posts from X, Substack, and Mastodon.</div>
+</main>
+
+<script>
+const form = document.getElementById("feed-form");
+const topicInput = document.getElementById("topic");
+const results = document.getElementById("results");
+const statusBar = document.getElementById("status-bar");
+const sourceLabels = { x: "X", substack: "Substack", mastodon: "Mastodon" };
+
+function selectedSources() {
+  return [...document.querySelectorAll('.sources input[type="checkbox"]:checked')].map((el) => el.value);
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function renderStatus(statuses) {
+  statusBar.innerHTML = "";
+  for (const [source, info] of Object.entries(statuses)) {
+    const span = document.createElement("span");
+    if (info.error) {
+      span.className = "err";
+      span.textContent = `${sourceLabels[source] || source}: ${info.error}`;
+    } else {
+      span.textContent = `${sourceLabels[source] || source}: ${info.count} result${info.count === 1 ? "" : "s"}`;
+    }
+    statusBar.appendChild(span);
+  }
+}
+
+function renderItems(items) {
+  if (!items.length) {
+    results.className = "empty";
+    results.textContent = "No results yet — try a different topic, or check the status messages above.";
+    return;
+  }
+  results.className = "";
+  results.innerHTML = "";
+  for (const item of items) {
+    const el = document.createElement("div");
+    el.className = "item";
+    const who = item.authorHandle ? `${item.author} (${item.authorHandle})` : item.author;
+    el.innerHTML = `
+      <div class="item-meta">
+        <span><span class="badge badge-${item.source}">${item.source}</span>${who}</span>
+        <span>${fmtDate(item.publishedAt)}</span>
+      </div>
+      <div class="item-text"></div>
+      <a href="${item.url}" target="_blank" rel="noopener noreferrer">View original →</a>
+    `;
+    el.querySelector(".item-text").textContent = item.text;
+    results.appendChild(el);
+  }
+}
+
+async function runSearch(topic) {
+  const sources = selectedSources();
+  results.className = "loading";
+  results.textContent = "Loading…";
+  statusBar.innerHTML = "";
+
+  const params = new URLSearchParams({ topic, sources: sources.join(",") });
+  try {
+    const res = await fetch(`/api/feed?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Request failed");
+    renderStatus(data.statuses);
+    renderItems(data.items);
+  } catch (err) {
+    results.className = "empty";
+    results.textContent = `Error: ${err.message}`;
+  }
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const topic = topicInput.value.trim();
+  if (topic) runSearch(topic);
+});
+</script>
+</body>
+</html>
