@@ -1,4 +1,4 @@
-# SuperLaser FF App
+# SuperLaser Social App
 
 ## Topic feed aggregator
 
