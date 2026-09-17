@@ -39,6 +39,18 @@ skipped:
     can remove it again from the Following list. This is the only way to
     find *new* publications by topic rather than ones you already follow —
     see the note below on how it works.
+
+  Any feed, from either source, can carry a **category** tag — a way to
+  scope a search to a set of publications instead of always searching all
+  of them. In `SUBSTACK_FEEDS`, prefix an entry with `category=`, e.g.
+  `poetry=https://example.substack.com/feed`; an entry with no `category=`
+  prefix has no category and is only searched when no category filter is
+  applied. When following a publication from Discover, fill in the
+  "Category tag" field before clicking "+ Keep" to tag it the same way.
+  The "Substack category" dropdown above the main search box lists every
+  category currently in use (from both `.env` and Following) and narrows
+  the Substack side of a search to just that tag — X and Mastodon results
+  are unaffected by it.
 - **Mastodon** — works out of the box against `https://mastodon.social`
   (or set `MASTODON_INSTANCE` to your home instance) by matching the topic
   as a hashtag against that instance's public timeline. Set
@@ -50,15 +62,18 @@ skipped:
 
 No frameworks or npm dependencies — a small Node `http` server
 (`src/server.js`) serves the static UI in `public/` and a JSON endpoint,
-`GET /api/feed?topic=...&sources=x,substack,mastodon`, that fans out to
-`src/sources/{x,substack,mastodon}.js` in parallel, normalizes each
-platform's response into `{ source, author, text, url, publishedAt }`, and
-returns everything merged and sorted by time.
+`GET /api/feed?topic=...&sources=x,substack,mastodon&category=...`, that
+fans out to `src/sources/{x,substack,mastodon}.js` in parallel, normalizes
+each platform's response into `{ source, author, text, url, publishedAt }`,
+and returns everything merged and sorted by time. `category` only affects
+the Substack fetcher, narrowing its feed list to that tag before searching.
 
 Substack discovery is separate: `GET /api/substack/discover?topic=...`
 (`src/sources/substackDiscover.js`) and the follow/unfollow endpoints at
 `/api/substack/following` (`src/substackStore.js`) manage the persisted
 list that `src/sources/substack.js` reads from alongside `SUBSTACK_FEEDS`.
+`GET /api/substack/categories` lists every distinct category tag in use
+across both, for the dropdown.
 
 ### A note on Substack discovery specifically
 

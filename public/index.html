@@ -67,6 +67,16 @@
     color: var(--muted);
   }
   .sources label { display: flex; align-items: center; gap: 5px; }
+  select {
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--bg-card);
+    color: inherit;
+  }
+  .category-row { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+  .category-row label { font-size: 0.9rem; color: var(--muted); }
   main {
     max-width: 720px;
     margin: 0 auto;
@@ -143,6 +153,15 @@
   }
   .pub-name { font-weight: 600; font-size: 0.9rem; }
   .pub-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .pub-category {
+    display: inline-block;
+    font-size: 0.7rem;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    padding: 1px 6px;
+    margin-top: 4px;
+  }
   .pub-card button {
     padding: 6px 12px;
     font-size: 0.8rem;
@@ -166,6 +185,12 @@
     <label><input type="checkbox" value="substack" checked /> Substack</label>
     <label><input type="checkbox" value="mastodon" checked /> Mastodon</label>
   </div>
+  <div class="category-row">
+    <label for="category-select">Substack category</label>
+    <select id="category-select">
+      <option value="">All</option>
+    </select>
+  </div>
 </header>
 
 <details class="discover">
@@ -178,6 +203,7 @@
     </p>
     <form id="discover-form">
       <input type="text" id="discover-topic" placeholder="Find Substack writers about…" autocomplete="off" />
+      <input type="text" id="discover-category" placeholder="Category tag (optional, e.g. poetry)" autocomplete="off" style="max-width:220px" />
       <button type="submit">Search Substack</button>
     </form>
     <div id="discover-error" class="discover-error" style="display:none"></div>
@@ -195,6 +221,7 @@
 <script>
 const form = document.getElementById("feed-form");
 const topicInput = document.getElementById("topic");
+const categorySelect = document.getElementById("category-select");
 const results = document.getElementById("results");
 const statusBar = document.getElementById("status-bar");
 const sourceLabels = { x: "X", substack: "Substack", mastodon: "Mastodon" };
@@ -256,6 +283,7 @@ async function runSearch(topic) {
   statusBar.innerHTML = "";
 
   const params = new URLSearchParams({ topic, sources: sources.join(",") });
+  if (categorySelect.value) params.set("category", categorySelect.value);
   try {
     const res = await fetch(`/api/feed?${params}`);
     const data = await res.json();
@@ -278,6 +306,7 @@ form.addEventListener("submit", (e) => {
 
 const discoverForm = document.getElementById("discover-form");
 const discoverTopicInput = document.getElementById("discover-topic");
+const discoverCategoryInput = document.getElementById("discover-category");
 const discoverResults = document.getElementById("discover-results");
 const discoverError = document.getElementById("discover-error");
 const followingList = document.getElementById("following-list");
@@ -306,6 +335,12 @@ function renderFollowing() {
     `;
     card.querySelector(".pub-name").textContent = pub.name;
     card.querySelector(".pub-desc").textContent = pub.feedUrl;
+    if (pub.category) {
+      const tag = document.createElement("div");
+      tag.className = "pub-category";
+      tag.textContent = pub.category;
+      card.querySelector(".pub-desc").after(tag);
+    }
     card.querySelector("button.remove").addEventListener("click", () => unfollow(pub.feedUrl));
     followingList.appendChild(card);
   }
@@ -328,7 +363,7 @@ function renderDiscoverResults(publications) {
     card.querySelector(".pub-desc").textContent = pub.description || pub.url;
     const btn = card.querySelector("button");
     if (!followed) {
-      btn.addEventListener("click", () => follow(pub, btn));
+      btn.addEventListener("click", () => follow({ ...pub, category: discoverCategoryInput.value.trim() }, btn));
     }
     discoverResults.appendChild(card);
   }
@@ -345,6 +380,26 @@ async function loadFollowing() {
   }
 }
 
+async function loadCategories() {
+  try {
+    const res = await fetch("/api/substack/categories");
+    const data = await res.json();
+    const previous = categorySelect.value;
+    categorySelect.innerHTML = '<option value="">All</option>';
+    for (const category of data.categories || []) {
+      const opt = document.createElement("option");
+      opt.value = category;
+      opt.textContent = category;
+      categorySelect.appendChild(opt);
+    }
+    if ([...categorySelect.options].some((o) => o.value === previous)) {
+      categorySelect.value = previous;
+    }
+  } catch {
+    // Non-fatal — category filter just stays at "All" until retried.
+  }
+}
+
 async function follow(pub, btn) {
   btn.disabled = true;
   btn.textContent = "Keeping…";
@@ -352,12 +407,13 @@ async function follow(pub, btn) {
     const res = await fetch("/api/substack/following", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: pub.name, url: pub.url, feedUrl: pub.feedUrl }),
+      body: JSON.stringify({ name: pub.name, url: pub.url, feedUrl: pub.feedUrl, category: pub.category || null }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to keep publication");
     following = data.publications;
     renderFollowing();
+    loadCategories();
     btn.textContent = "Kept";
   } catch (err) {
     btn.disabled = false;
@@ -377,6 +433,7 @@ async function unfollow(feedUrl) {
     if (!res.ok) throw new Error(data.error || "Failed to remove publication");
     following = data.publications;
     renderFollowing();
+    loadCategories();
   } catch (err) {
     alert(err.message);
   }
@@ -408,6 +465,7 @@ discoverForm.addEventListener("submit", async (e) => {
 });
 
 loadFollowing();
+loadCategories();
 </script>
 </body>
 </html>

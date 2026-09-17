@@ -10,13 +10,14 @@ const FETCHERS = {
 
 export const ALL_SOURCES = Object.keys(FETCHERS);
 
-export async function aggregate(topic, sources = ALL_SOURCES) {
+export async function aggregate(topic, sources = ALL_SOURCES, { substackCategory = null } = {}) {
   const selected = sources.filter((s) => s in FETCHERS);
 
   const results = await Promise.all(
     selected.map(async (source) => {
       try {
-        const { items, error } = await FETCHERS[source](topic);
+        const options = source === "substack" ? { category: substackCategory } : {};
+        const { items, error } = await FETCHERS[source](topic, options);
         return { source, items, error };
       } catch (err) {
         return { source, items: [], error: err.message };
