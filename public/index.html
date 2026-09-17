@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Topic Feed</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --border: #d8d8d8;
+    --muted: #6b6b6b;
+    --accent: #2f6fed;
+    --bg-card: #fff;
+    --bg-page: #f6f6f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --border: #3a3a3a;
+      --muted: #9a9a9a;
+      --bg-card: #1e1e1f;
+      --bg-page: #121212;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg-page);
+    color: inherit;
+  }
+  header {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 12px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 12px; }
+  form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--bg-card);
+    color: inherit;
+  }
+  button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .sources {
+    display: flex;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .sources label { display: flex; align-items: center; gap: 5px; }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 12px 16px 48px;
+  }
+  .status-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .status-bar span.err { color: #d0453d; }
+  .item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .item-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-right: 6px;
+  }
+  .badge-x { background: #000; color: #fff; }
+  .badge-substack { background: #ff6719; color: #fff; }
+  .badge-mastodon { background: #6364ff; color: #fff; }
+  .item a { color: var(--accent); text-decoration: none; }
+  .item a:hover { text-decoration: underline; }
+  .empty, .loading { color: var(--muted); text-align: center; padding: 40px 0; }
+
+  details.discover {
+    max-width: 720px;
+    margin: 0 auto 16px;
+    padding: 0 16px;
+  }
+  details.discover summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--muted);
+    padding: 8px 0;
+  }
+  .discover-body {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .discover-body form { margin-bottom: 10px; }
+  .discover-hint { font-size: 0.78rem; color: var(--muted); margin: 0 0 10px; }
+  .pub-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .pub-name { font-weight: 600; font-size: 0.9rem; }
+  .pub-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .pub-card button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .pub-card button.remove { background: #d0453d; }
+  .pub-card button:disabled { background: var(--muted); }
+  .following-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .discover-error { color: #d0453d; font-size: 0.8rem; margin: 8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Topic Feed</h1>
+  <form id="feed-form">
+    <input type="text" id="topic" placeholder="Search a topic (e.g. climate policy)" autocomplete="off" />
+    <button type="submit">Search</button>
+  </form>
+  <div class="sources">
+    <label><input type="checkbox" value="x" checked /> X</label>
+    <label><input type="checkbox" value="substack" checked /> Substack</label>
+    <label><input type="checkbox" value="mastodon" checked /> Mastodon</label>
+  </div>
+</header>
+
+<details class="discover">
+  <summary>Substack: discover writers by topic &amp; manage who you follow</summary>
+  <div class="discover-body">
+    <p class="discover-hint">
+      Searches Substack for publications on a topic (unofficial endpoint — best-effort,
+      can be unreliable). Click "+ Keep" on any result to follow it; followed
+      publications feed into your topic searches above from then on.
+    </p>
+    <form id="discover-form">
+      <input type="text" id="discover-topic" placeholder="Find Substack writers about…" autocomplete="off" />
+      <button type="submit">Search Substack</button>
+    </form>
+    <div id="discover-error" class="discover-error" style="display:none"></div>
+    <div id="discover-results"></div>
+    <h3 style="font-size:0.85rem; margin: 16px 0 6px;">Following</h3>
+    <div id="following-list" class="following-list"></div>
+  </div>
+</details>
+
+<main>
+  <div class="status-bar" id="status-bar"></div>
+  <div id="results" class="empty">Enter a topic above to pull matching posts from X, Substack, and Mastodon.</div>
+</main>
+
+<script>
+const form = document.getElementById("feed-form");
+const topicInput = document.getElementById("topic");
+const results = document.getElementById("results");
+const statusBar = document.getElementById("status-bar");
+const sourceLabels = { x: "X", substack: "Substack", mastodon: "Mastodon" };
+
+function selectedSources() {
+  return [...document.querySelectorAll('.sources input[type="checkbox"]:checked')].map((el) => el.value);
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function renderStatus(statuses) {
+  statusBar.innerHTML = "";
+  for (const [source, info] of Object.entries(statuses)) {
+    const span = document.createElement("span");
+    if (info.error) {
+      span.className = "err";
+      span.textContent = `${sourceLabels[source] || source}: ${info.error}`;
+    } else {
+      span.textContent = `${sourceLabels[source] || source}: ${info.count} result${info.count === 1 ? "" : "s"}`;
+    }
+    statusBar.appendChild(span);
+  }
+}
+
+function renderItems(items) {
+  if (!items.length) {
+    results.className = "empty";
+    results.textContent = "No results yet — try a different topic, or check the status messages above.";
+    return;
+  }
+  results.className = "";
+  results.innerHTML = "";
+  for (const item of items) {
+    const el = document.createElement("div");
+    el.className = "item";
+    const who = item.authorHandle ? `${item.author} (${item.authorHandle})` : item.author;
+    el.innerHTML = `
+      <div class="item-meta">
+        <span><span class="badge badge-${item.source}">${item.source}</span>${who}</span>
+        <span>${fmtDate(item.publishedAt)}</span>
+      </div>
+      <div class="item-text"></div>
+      <a href="${item.url}" target="_blank" rel="noopener noreferrer">View original →</a>
+    `;
+    el.querySelector(".item-text").textContent = item.text;
+    results.appendChild(el);
+  }
+}
+
+async function runSearch(topic) {
+  const sources = selectedSources();
+  results.className = "loading";
+  results.textContent = "Loading…";
+  statusBar.innerHTML = "";
+
+  const params = new URLSearchParams({ topic, sources: sources.join(",") });
+  try {
+    const res = await fetch(`/api/feed?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Request failed");
+    renderStatus(data.statuses);
+    renderItems(data.items);
+  } catch (err) {
+    results.className = "empty";
+    results.textContent = `Error: ${err.message}`;
+  }
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const topic = topicInput.value.trim();
+  if (topic) runSearch(topic);
+});
+
+// --- Substack discovery / following ---
+
+const discoverForm = document.getElementById("discover-form");
+const discoverTopicInput = document.getElementById("discover-topic");
+const discoverResults = document.getElementById("discover-results");
+const discoverError = document.getElementById("discover-error");
+const followingList = document.getElementById("following-list");
+
+let following = [];
+
+function isFollowed(feedUrl) {
+  return following.some((p) => p.feedUrl === feedUrl);
+}
+
+function renderFollowing() {
+  followingList.innerHTML = "";
+  if (!following.length) {
+    followingList.innerHTML = '<span style="color:var(--muted); font-size:0.85rem;">Not following any publications yet.</span>';
+    return;
+  }
+  for (const pub of following) {
+    const card = document.createElement("div");
+    card.className = "pub-card";
+    card.innerHTML = `
+      <div>
+        <div class="pub-name"></div>
+        <div class="pub-desc"></div>
+      </div>
+      <button class="remove" type="button">Remove</button>
+    `;
+    card.querySelector(".pub-name").textContent = pub.name;
+    card.querySelector(".pub-desc").textContent = pub.feedUrl;
+    card.querySelector("button.remove").addEventListener("click", () => unfollow(pub.feedUrl));
+    followingList.appendChild(card);
+  }
+}
+
+function renderDiscoverResults(publications) {
+  discoverResults.innerHTML = "";
+  for (const pub of publications) {
+    const card = document.createElement("div");
+    card.className = "pub-card";
+    const followed = isFollowed(pub.feedUrl);
+    card.innerHTML = `
+      <div>
+        <div class="pub-name"></div>
+        <div class="pub-desc"></div>
+      </div>
+      <button type="button" ${followed ? "disabled" : ""}>${followed ? "Kept" : "+ Keep"}</button>
+    `;
+    card.querySelector(".pub-name").textContent = pub.name;
+    card.querySelector(".pub-desc").textContent = pub.description || pub.url;
+    const btn = card.querySelector("button");
+    if (!followed) {
+      btn.addEventListener("click", () => follow(pub, btn));
+    }
+    discoverResults.appendChild(card);
+  }
+}
+
+async function loadFollowing() {
+  try {
+    const res = await fetch("/api/substack/following");
+    const data = await res.json();
+    following = data.publications || [];
+    renderFollowing();
+  } catch {
+    // Non-fatal — following list just stays empty until retried.
+  }
+}
+
+async function follow(pub, btn) {
+  btn.disabled = true;
+  btn.textContent = "Keeping…";
+  try {
+    const res = await fetch("/api/substack/following", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: pub.name, url: pub.url, feedUrl: pub.feedUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to keep publication");
+    following = data.publications;
+    renderFollowing();
+    btn.textContent = "Kept";
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "+ Keep";
+    alert(err.message);
+  }
+}
+
+async function unfollow(feedUrl) {
+  try {
+    const res = await fetch("/api/substack/following", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to remove publication");
+    following = data.publications;
+    renderFollowing();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+discoverForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const topic = discoverTopicInput.value.trim();
+  if (!topic) return;
+
+  discoverError.style.display = "none";
+  discoverResults.innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Searching…</p>';
+
+  try {
+    const res = await fetch(`/api/substack/discover?${new URLSearchParams({ topic })}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Discovery request failed");
+
+    if (data.error) {
+      discoverError.textContent = data.error;
+      discoverError.style.display = "block";
+    }
+    renderDiscoverResults(data.publications || []);
+  } catch (err) {
+    discoverResults.innerHTML = "";
+    discoverError.textContent = err.message;
+    discoverError.style.display = "block";
+  }
+});
+
+loadFollowing();
+</script>
+</body>
+</html>
