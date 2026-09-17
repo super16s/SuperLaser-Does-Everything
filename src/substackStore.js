@@ -24,7 +24,7 @@ export function listFollowing() {
   return readStore();
 }
 
-export async function followPublication({ name, url, feedUrl }) {
+export async function followPublication({ name, url, feedUrl, category }) {
   if (!feedUrl) throw new Error("feedUrl is required");
 
   const res = await fetch(feedUrl);
@@ -36,7 +36,13 @@ export async function followPublication({ name, url, feedUrl }) {
 
   const list = readStore();
   if (list.some((p) => p.feedUrl === feedUrl)) return list;
-  list.push({ name: name || feedUrl, url: url || feedUrl, feedUrl, addedAt: new Date().toISOString() });
+  list.push({
+    name: name || feedUrl,
+    url: url || feedUrl,
+    feedUrl,
+    category: category ? category.trim() || null : null,
+    addedAt: new Date().toISOString(),
+  });
   writeStore(list);
   return list;
 }
