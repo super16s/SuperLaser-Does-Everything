@@ -1,0 +1,14 @@
+{
+  "name": "SuperLaser Social App",
+  "short_name": "SuperLaser",
+  "description": "One pane for X, Substack, and Mastodon posts on the topics you choose.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f6f7",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

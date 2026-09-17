@@ -32,6 +32,9 @@ const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
 };
 
 async function handleFeed(req, res, url) {
@@ -122,7 +125,8 @@ function serveStatic(req, res, pathname) {
   }
 
   const ext = path.extname(filePath);
-  res.writeHead(200, { "Content-Type": CONTENT_TYPES[ext] || "application/octet-stream" });
+  const contentType = relativePath === "manifest.json" ? "application/manifest+json" : CONTENT_TYPES[ext] || "application/octet-stream";
+  res.writeHead(200, { "Content-Type": contentType });
   fs.createReadStream(filePath).pipe(res);
 }
 
