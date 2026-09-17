@@ -2,8 +2,9 @@
 
 ## Topic feed aggregator
 
-Pulls posts from X, Substack, and Mastodon that match a topic you choose, and
-shows them merged into a single chronological feed in the browser.
+Pulls posts from X, Substack, Mastodon, Reddit, and arXiv that match a topic
+you choose, and shows them merged into a single chronological feed in the
+browser.
 
 ### Run it
 
@@ -47,33 +48,50 @@ skipped:
   prefix has no category and is only searched when no category filter is
   applied. When following a publication from Discover, fill in the
   "Category tag" field before clicking "+ Keep" to tag it the same way.
-  The "Substack category" dropdown above the main search box lists every
-  category currently in use (from both `.env` and Following) and narrows
-  the Substack side of a search to just that tag — X and Mastodon results
-  are unaffected by it.
+  The "Category" dropdown above the main search box lists every category
+  currently in use (from `.env` and Following, for both Substack and
+  Reddit — see below) and narrows their feed lists to just that tag; X,
+  Mastodon, and arXiv results are unaffected by it, since all three already
+  do real full-text search and have no "which sources" problem to solve.
 - **Mastodon** — works out of the box against `https://mastodon.social`
   (or set `MASTODON_INSTANCE` to your home instance) by matching the topic
   as a hashtag against that instance's public timeline. Set
   `MASTODON_ACCESS_TOKEN` (create one under Settings → Development on your
   instance) to instead use full-text search, which works for multi-word
   topics too and isn't limited to hashtags.
+- **Reddit** — works out of the box with no key, using Reddit's public
+  search (site-wide by default). Optionally tag specific subreddits with a
+  category in `REDDIT_SUBREDDITS` (same `category=value` format as
+  `SUBSTACK_FEEDS`), so selecting that category restricts the search to
+  just those subreddits instead of all of Reddit. Reddit tightened API
+  terms in 2023 for commercial/high-volume use — this uses the public JSON
+  endpoints, which is fine for personal use but isn't a guaranteed-forever
+  arrangement the way a real API key would be.
+- **arXiv** — needs no configuration at all; it's a genuinely free,
+  unlimited, no-key official API, the one source here with zero setup
+  friction. Best fit for the math/science category, though it isn't
+  scoped by the category filter — arXiv already does full-text search on
+  its own, same reasoning as X and Mastodon above.
 
 ### How it's built
 
 No frameworks or npm dependencies — a small Node `http` server
 (`src/server.js`) serves the static UI in `public/` and a JSON endpoint,
-`GET /api/feed?topic=...&sources=x,substack,mastodon&category=...`, that
-fans out to `src/sources/{x,substack,mastodon}.js` in parallel, normalizes
-each platform's response into `{ source, author, text, url, publishedAt }`,
-and returns everything merged and sorted by time. `category` only affects
-the Substack fetcher, narrowing its feed list to that tag before searching.
+`GET /api/feed?topic=...&sources=x,substack,mastodon,reddit,arxiv&category=...`,
+that fans out to `src/sources/{x,substack,mastodon,reddit,arxiv}.js` in
+parallel, normalizes each platform's response into
+`{ source, author, text, url, publishedAt }`, and returns everything
+merged and sorted by time. `category` only affects Substack and Reddit,
+narrowing their feed/subreddit lists to that tag before searching.
+`src/xml.js` holds the shared RSS/Atom parsing helpers Substack and arXiv
+both use.
 
 Substack discovery is separate: `GET /api/substack/discover?topic=...`
 (`src/sources/substackDiscover.js`) and the follow/unfollow endpoints at
 `/api/substack/following` (`src/substackStore.js`) manage the persisted
 list that `src/sources/substack.js` reads from alongside `SUBSTACK_FEEDS`.
-`GET /api/substack/categories` lists every distinct category tag in use
-across both, for the dropdown.
+`GET /api/categories` lists every distinct category tag in use across
+Substack and Reddit, for the dropdown.
 
 ### A note on Substack discovery specifically
 
@@ -118,6 +136,9 @@ Re-run it if you ever change the icon design.
   through your monthly quota fast.
 - Mastodon's federated network means a single instance's timeline/search
   only sees what that instance knows about, not all of Mastodon.
+- Reddit's public JSON endpoints work without a key for personal use today,
+  but aren't a documented, versioned API the way arXiv's is — treat it as
+  the least stable of the free sources long-term.
 
 ## NGS data script
 

@@ -17,6 +17,7 @@
 // searches.
 
 import { listFollowing } from "../substackStore.js";
+import { stripHtml, extractTag, extractBlocks } from "../xml.js";
 
 function parseEnvFeeds() {
   return (process.env.SUBSTACK_FEEDS || "")
@@ -48,32 +49,8 @@ export function listCategories() {
   return [...new Set(categories)].sort();
 }
 
-function stripCdata(raw) {
-  const match = raw.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
-  return match ? match[1] : raw;
-}
-
-function decodeEntities(text) {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'");
-}
-
-function stripHtml(text) {
-  return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function extractTag(xml, tag) {
-  const match = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
-  if (!match) return null;
-  return decodeEntities(stripCdata(match[1].trim()));
-}
-
 function parseFeedItems(xml) {
-  const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/g) ?? [];
+  const itemBlocks = extractBlocks(xml, "item");
   return itemBlocks.map((block) => ({
     title: extractTag(block, "title") ?? "",
     link: extractTag(block, "link") ?? "",

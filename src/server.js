@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { aggregate, ALL_SOURCES } from "./aggregate.js";
 import { discoverSubstack } from "./sources/substackDiscover.js";
-import { listCategories } from "./sources/substack.js";
+import { listCategories as listSubstackCategories } from "./sources/substack.js";
+import { listCategories as listRedditCategories } from "./sources/reddit.js";
 import { listFollowing, followPublication, unfollowPublication } from "./substackStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,7 @@ async function handleFeed(req, res, url) {
   const topic = (url.searchParams.get("topic") || "").trim();
   const sourcesParam = url.searchParams.get("sources");
   const sources = sourcesParam ? sourcesParam.split(",").map((s) => s.trim()) : ALL_SOURCES;
-  const substackCategory = (url.searchParams.get("category") || "").trim() || null;
+  const category = (url.searchParams.get("category") || "").trim() || null;
 
   if (!topic) {
     sendJson(res, 400, { error: "Query parameter 'topic' is required." });
@@ -49,7 +50,7 @@ async function handleFeed(req, res, url) {
   }
 
   try {
-    const result = await aggregate(topic, sources, { substackCategory });
+    const result = await aggregate(topic, sources, { category });
     sendJson(res, 200, result);
   } catch (err) {
     sendJson(res, 500, { error: err.message });
@@ -111,7 +112,8 @@ async function handleFollowing(req, res) {
 }
 
 function handleCategories(req, res) {
-  sendJson(res, 200, { categories: listCategories() });
+  const categories = [...new Set([...listSubstackCategories(), ...listRedditCategories()])].sort();
+  sendJson(res, 200, { categories });
 }
 
 function serveStatic(req, res, pathname) {
@@ -148,7 +150,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (url.pathname === "/api/substack/categories") {
+  if (url.pathname === "/api/categories") {
     handleCategories(req, res);
     return;
   }

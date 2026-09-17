@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Topic Feed</title>
 <meta name="theme-color" content="#2f6fed" />
-<meta name="description" content="One pane for X, Substack, and Mastodon posts on the topics you choose." />
+<meta name="description" content="One pane for X, Substack, Mastodon, Reddit, and arXiv posts on the topics you choose." />
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" href="/icons/icon-192.png" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -126,6 +126,8 @@
   .badge-x { background: #000; color: #fff; }
   .badge-substack { background: #ff6719; color: #fff; }
   .badge-mastodon { background: #6364ff; color: #fff; }
+  .badge-reddit { background: #ff4500; color: #fff; }
+  .badge-arxiv { background: #b31b1b; color: #fff; }
   .item a { color: var(--accent); text-decoration: none; }
   .item a:hover { text-decoration: underline; }
   .empty, .loading { color: var(--muted); text-align: center; padding: 40px 0; }
@@ -192,9 +194,11 @@
     <label><input type="checkbox" value="x" checked /> X</label>
     <label><input type="checkbox" value="substack" checked /> Substack</label>
     <label><input type="checkbox" value="mastodon" checked /> Mastodon</label>
+    <label><input type="checkbox" value="reddit" checked /> Reddit</label>
+    <label><input type="checkbox" value="arxiv" checked /> arXiv</label>
   </div>
   <div class="category-row">
-    <label for="category-select">Substack category</label>
+    <label for="category-select">Category</label>
     <select id="category-select">
       <option value="">All</option>
     </select>
@@ -223,7 +227,7 @@
 
 <main>
   <div class="status-bar" id="status-bar"></div>
-  <div id="results" class="empty">Enter a topic above to pull matching posts from X, Substack, and Mastodon.</div>
+  <div id="results" class="empty">Enter a topic above to pull matching posts from X, Substack, Mastodon, Reddit, and arXiv.</div>
 </main>
 
 <script>
@@ -232,7 +236,7 @@ const topicInput = document.getElementById("topic");
 const categorySelect = document.getElementById("category-select");
 const results = document.getElementById("results");
 const statusBar = document.getElementById("status-bar");
-const sourceLabels = { x: "X", substack: "Substack", mastodon: "Mastodon" };
+const sourceLabels = { x: "X", substack: "Substack", mastodon: "Mastodon", reddit: "Reddit", arxiv: "arXiv" };
 
 function selectedSources() {
   return [...document.querySelectorAll('.sources input[type="checkbox"]:checked')].map((el) => el.value);
@@ -390,7 +394,7 @@ async function loadFollowing() {
 
 async function loadCategories() {
   try {
-    const res = await fetch("/api/substack/categories");
+    const res = await fetch("/api/categories");
     const data = await res.json();
     const previous = categorySelect.value;
     categorySelect.innerHTML = '<option value="">All</option>';
