@@ -93,6 +93,17 @@ real caveats:
   fallback — it only depends on Substack's public RSS feeds, which are a
   stable, documented feature.
 
+### Image generation (Fooocus)
+
+An optional "Generate an image" panel calls a separately-run
+[Fooocus-API](https://github.com/mrhan1993/Fooocus-API) server (a community
+REST wrapper around [Fooocus](https://github.com/lllyasviel/Fooocus); Fooocus
+itself has no stable HTTP API and needs a GPU). Start Fooocus-API somewhere
+(`python main.py`, port 8888), then set `FOOOCUS_API_URL` in `.env`. The app
+exposes `POST /api/image` with `{ "prompt": "..." }` and returns
+`{ images: [{ src, seed }] }`. Unset, the panel just reports it's not
+configured. Note Fooocus is in limited-maintenance mode upstream.
+
 ### Install it on your phone (PWA)
 
 The app is a Progressive Web App — run it as usual (`npm start`), open it

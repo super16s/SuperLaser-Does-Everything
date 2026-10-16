@@ -221,6 +221,18 @@
   </div>
 </details>
 
+<details class="discover">
+  <summary>Generate an image (Fooocus)</summary>
+  <div class="discover-body">
+    <form id="image-form">
+      <input type="text" id="image-prompt" placeholder="Describe an image…" autocomplete="off" />
+      <button type="submit" id="image-submit">Generate</button>
+    </form>
+    <div id="image-status" class="discover-hint"></div>
+    <div id="image-results"></div>
+  </div>
+</details>
+
 <main>
   <div class="status-bar" id="status-bar"></div>
   <div id="results" class="empty">Enter a topic above to pull matching posts from X, Substack, and Mastodon.</div>
@@ -469,6 +481,40 @@ discoverForm.addEventListener("submit", async (e) => {
     discoverResults.innerHTML = "";
     discoverError.textContent = err.message;
     discoverError.style.display = "block";
+  }
+});
+
+const imageForm = document.getElementById("image-form");
+imageForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const prompt = document.getElementById("image-prompt").value.trim();
+  if (!prompt) return;
+  const submit = document.getElementById("image-submit");
+  const status = document.getElementById("image-status");
+  const out = document.getElementById("image-results");
+  submit.disabled = true;
+  status.textContent = "Generating… this can take a minute or more.";
+  out.textContent = "";
+  try {
+    const res = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    status.textContent = "";
+    for (const img of data.images) {
+      const el = document.createElement("img");
+      el.src = img.src;
+      el.alt = prompt;
+      el.style.cssText = "max-width:100%;border-radius:8px;margin-top:8px";
+      out.appendChild(el);
+    }
+  } catch (err) {
+    status.textContent = err.message;
+  } finally {
+    submit.disabled = false;
   }
 });
 

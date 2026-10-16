@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { aggregate, ALL_SOURCES } from "./aggregate.js";
 import { discoverSubstack } from "./sources/substackDiscover.js";
+import { generateImages } from "./sources/fooocus.js";
 import { listCategories } from "./sources/substack.js";
 import { listFollowing, followPublication, unfollowPublication } from "./substackStore.js";
 
@@ -110,6 +111,27 @@ async function handleFollowing(req, res) {
   sendJson(res, 405, { error: "Method not allowed" });
 }
 
+async function handleImage(req, res) {
+  if (req.method !== "POST") {
+    sendJson(res, 405, { error: "Method not allowed" });
+    return;
+  }
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    sendJson(res, 400, { error: "Invalid JSON body." });
+    return;
+  }
+  const prompt = String(body.prompt || "").trim();
+  if (!prompt) {
+    sendJson(res, 400, { error: "'prompt' is required." });
+    return;
+  }
+  const result = await generateImages(prompt, { negativePrompt: String(body.negativePrompt || ""), count: body.count });
+  sendJson(res, result.error ? 502 : 200, result);
+}
+
 function handleCategories(req, res) {
   sendJson(res, 200, { categories: listCategories() });
 }
@@ -150,6 +172,11 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === "/api/substack/categories") {
     handleCategories(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/image") {
+    handleImage(req, res);
     return;
   }
 
