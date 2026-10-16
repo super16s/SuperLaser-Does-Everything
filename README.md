@@ -30,6 +30,12 @@ exposes `POST /api/image` with `{ "prompt": "..." }` and returns
 `{ images: [{ src, seed }] }`. Unset, the panel just reports it's not
 configured. Note Fooocus is in limited-maintenance mode upstream.
 
+**No local GPU?** Open `colab/fooocus_api.ipynb` in Google Colab with a GPU
+runtime and run all cells. It installs Fooocus-API, starts it, opens a
+Cloudflare quick tunnel and prints the `FOOOCUS_API_URL` to paste into `.env`.
+The tunnel URL has no login, so keep it private; it changes every session and
+first start downloads ~10 GB of models.
+
 ### Install it on your phone (PWA)
 
 The app is a Progressive Web App — run it as usual (`npm start`), open it
