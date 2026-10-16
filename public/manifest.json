@@ -1,7 +1,7 @@
 {
   "name": "SuperLaser Social App",
   "short_name": "SuperLaser",
-  "description": "One pane for X, Substack, and Mastodon posts on the topics you choose.",
+  "description": "Generate images with Fooocus.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
