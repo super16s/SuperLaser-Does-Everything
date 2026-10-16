@@ -7,7 +7,6 @@
     "node": ">=18"
   },
   "scripts": {
-    "fetch:ngs": "node scripts/fetch-ngs.js",
     "start": "node src/server.js"
   }
 }

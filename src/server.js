@@ -2,11 +2,8 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { aggregate, ALL_SOURCES } from "./aggregate.js";
-import { discoverSubstack } from "./sources/substackDiscover.js";
+import { authEnabled, isLoggedIn, handleLogin, loginPage, logoutHeaders } from "./auth.js";
 import { generateImages } from "./sources/fooocus.js";
-import { listCategories } from "./sources/substack.js";
-import { listFollowing, followPublication, unfollowPublication } from "./substackStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,25 +35,6 @@ const CONTENT_TYPES = {
   ".svg": "image/svg+xml",
 };
 
-async function handleFeed(req, res, url) {
-  const topic = (url.searchParams.get("topic") || "").trim();
-  const sourcesParam = url.searchParams.get("sources");
-  const sources = sourcesParam ? sourcesParam.split(",").map((s) => s.trim()) : ALL_SOURCES;
-  const substackCategory = (url.searchParams.get("category") || "").trim() || null;
-
-  if (!topic) {
-    sendJson(res, 400, { error: "Query parameter 'topic' is required." });
-    return;
-  }
-
-  try {
-    const result = await aggregate(topic, sources, { substackCategory });
-    sendJson(res, 200, result);
-  } catch (err) {
-    sendJson(res, 500, { error: err.message });
-  }
-}
-
 function sendJson(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
@@ -69,49 +47,11 @@ async function readJsonBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-async function handleDiscover(req, res, url) {
-  const topic = (url.searchParams.get("topic") || "").trim();
-  if (!topic) {
-    sendJson(res, 400, { error: "Query parameter 'topic' is required." });
-    return;
-  }
-  const result = await discoverSubstack(topic);
-  sendJson(res, 200, result);
-}
-
-async function handleFollowing(req, res) {
-  if (req.method === "GET") {
-    sendJson(res, 200, { publications: listFollowing() });
-    return;
-  }
-
-  if (req.method === "POST") {
-    try {
-      const body = await readJsonBody(req);
-      const list = await followPublication(body);
-      sendJson(res, 200, { publications: list });
-    } catch (err) {
-      sendJson(res, 400, { error: err.message });
-    }
-    return;
-  }
-
-  if (req.method === "DELETE") {
-    try {
-      const body = await readJsonBody(req);
-      if (!body.feedUrl) throw new Error("feedUrl is required");
-      const list = unfollowPublication(body.feedUrl);
-      sendJson(res, 200, { publications: list });
-    } catch (err) {
-      sendJson(res, 400, { error: err.message });
-    }
-    return;
-  }
-
-  sendJson(res, 405, { error: "Method not allowed" });
-}
-
 async function handleImage(req, res) {
+  if (!authEnabled()) {
+    sendJson(res, 503, { error: "Image generation is disabled until APP_PASSWORD is set in .env." });
+    return;
+  }
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
@@ -132,10 +72,6 @@ async function handleImage(req, res) {
   sendJson(res, result.error ? 502 : 200, result);
 }
 
-function handleCategories(req, res) {
-  sendJson(res, 200, { categories: listCategories() });
-}
-
 function serveStatic(req, res, pathname) {
   const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
   const filePath = path.join(PUBLIC_DIR, relativePath);
@@ -152,27 +88,54 @@ function serveStatic(req, res, pathname) {
   fs.createReadStream(filePath).pipe(res);
 }
 
+const PUBLIC_PATHS = new Set(["/login", "/logout", "/manifest.json", "/sw.js"]);
+
+async function readRaw(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 10_000) break; // a password form is tiny
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function handleAuthRoutes(req, res, url) {
+  if (url.pathname === "/login") {
+    if (req.method === "POST") {
+      const r = await handleLogin(req, readRaw);
+      res.writeHead(r.status, { "Content-Type": "text/html; charset=utf-8", ...r.headers });
+      res.end(r.body);
+    } else {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(loginPage());
+    }
+    return;
+  }
+  // logout
+  res.writeHead(302, logoutHeaders(req));
+  res.end();
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  if (url.pathname === "/api/feed") {
-    handleFeed(req, res, url);
-    return;
-  }
-
-  if (url.pathname === "/api/substack/discover") {
-    handleDiscover(req, res, url);
-    return;
-  }
-
-  if (url.pathname === "/api/substack/following") {
-    handleFollowing(req, res);
-    return;
-  }
-
-  if (url.pathname === "/api/substack/categories") {
-    handleCategories(req, res);
-    return;
+  if (authEnabled()) {
+    if (url.pathname === "/login" || url.pathname === "/logout") {
+      handleAuthRoutes(req, res, url);
+      return;
+    }
+    const isPublic = PUBLIC_PATHS.has(url.pathname) || url.pathname.startsWith("/icons/");
+    if (!isPublic && !isLoggedIn(req)) {
+      if (url.pathname.startsWith("/api/")) {
+        sendJson(res, 401, { error: "Not logged in." });
+      } else {
+        res.writeHead(302, { Location: "/login" });
+        res.end();
+      }
+      return;
+    }
   }
 
   if (url.pathname === "/api/image") {
@@ -184,5 +147,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Content aggregator running at http://localhost:${PORT}`);
+  console.log(`Image studio running at http://localhost:${PORT}`);
 });
