@@ -7,7 +7,7 @@ import { startScheduler, snooze, skipToday, notify, askPermission } from "./remi
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, rest: null, restLen: 60, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, rest: null, restLen: 60, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
 ui.date = L.ymd(); // always open on today
 const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen })); } catch {} };
@@ -131,7 +131,7 @@ function openLongMenu(t) {
 // ---------- click handlers ----------
 
 const goTab = (tab) => { ui.tab = tab; saveUi(); render(); window.scrollTo(0, 0); };
-const setDate = (d) => { ui.date = d; ui.weightDraft = null; ui.waistDraft = null; render(); };
+const setDate = (d) => { ui.date = d; ui.weightDraft = null; ui.waistDraft = null; ui.loadDraft = {}; render(); };
 const wBase = () => ui.weightDraft ?? L.getDay(S(), ui.date).weight?.lb ?? V.lastWeight(S(), ui.date);
 const round1 = (n) => Math.round(n * 10) / 10;
 const areasOfCheckin = () => (ui.painAreas.length ? ui.painAreas : ["elbow"]);
@@ -183,6 +183,16 @@ const handlers = {
     // Marking done (not un-marking) starts the rest timer if enabled.
     if (was !== "done" && ui.restLen) { ui.rest = { endAt: Date.now() + ui.restLen * 1000 }; render(); }
   },
+  lstep(d) {
+    const cur = ui.loadDraft[d.ex] ?? L.getDay(S(), ui.date).loads?.[d.ex]?.lb ?? L.loadHistory(S(), d.ex, ui.date).last?.lb ?? 0;
+    ui.loadDraft[d.ex] = Math.max(0, Math.round((cur + +d.v) * 10) / 10); render();
+  },
+  llog(d) {
+    const draft = ui.loadDraft[d.ex] ?? L.getDay(S(), ui.date).loads?.[d.ex]?.lb ?? L.loadHistory(S(), d.ex, ui.date).last?.lb ?? 0;
+    delete ui.loadDraft[d.ex];
+    act((s) => A.setLoad(s, ui.date, d.ex, draft), `Load ${draft} lb logged`);
+  },
+  lclear(d) { delete ui.loadDraft[d.ex]; act((s) => A.setLoad(s, ui.date, d.ex, null), "Load cleared"); },
   restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
   restcancel() { ui.rest = null; render(); },
   provoked() { ui.painTod = "after"; ui.rest = null; toast("Stop the workout. Log how it feels below.", false); goTab("recovery"); },
@@ -322,12 +332,12 @@ function download(name, text, type) {
 const csvCell = (v) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export function toCsv(state) {
   const dates = [...new Set([...Object.keys(state.days), ...state.pain.map((r) => r.date)])].sort();
-  const head = ["date", "timezone", "weight_lb", "calories", "protein_g", "meals_logged", "workout_status", "sleep_band", "yoga_stages_done", "meditation_done", "water_checks", "elbow_pain_max", "neck_pain_max"];
+  const head = ["date", "timezone", "weight_lb", "calories", "protein_g", "meals_logged", "workout_status", "sleep_band", "yoga_stages_done", "meditation_done", "water_checks", "elbow_pain_max", "neck_pain_max", "loads_lb"];
   const rows = dates.map((d) => {
     const day = L.getDay(state, d), t = L.mealTotals(state, d);
     return [d, day.tz, day.weight?.lb, t.calories, t.protein, Object.keys(day.meals || {}).length, L.workoutStatus(state, d),
       day.sleepBand, Object.values(day.yogaStages || {}).filter((s) => s.status === "done").length, day.meditationDone ? 1 : 0,
-      Object.keys(day.hydrationChecks || {}).length, L.painDaily(state, d, "elbow"), L.painDaily(state, d, "neck")].map(csvCell).join(",");
+      Object.keys(day.hydrationChecks || {}).length, L.painDaily(state, d, "elbow"), L.painDaily(state, d, "neck"), Object.entries(day.loads || {}).map(([k, v]) => `${k}:${v.lb}`).join(";")].map(csvCell).join(",");
   });
   return [head.join(","), ...rows].join("\n");
 }

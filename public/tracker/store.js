@@ -223,6 +223,13 @@ export const actions = {
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
+  setLoad(s, date, exId, lb) {
+    const d = day(s, date);
+    d.loads ||= {};
+    if (lb == null) delete d.loads[exId]; else d.loads[exId] = { lb: Math.round(lb * 10) / 10, ...stamp() };
+    if (!Object.keys(d.loads).length) delete d.loads;
+    prune(s, date);
+  },
   setReadiness(s, date, id) {
     const d = day(s, date);
     d.readiness ||= {};

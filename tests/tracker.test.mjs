@@ -349,3 +349,25 @@ test("push ladder starts at standard push-ups; pull ladder starts at dead hangs;
   assert.deepEqual(variant("pull"), ["h-pullup"]);
   assert.equal(st.state.progression.pull.history.length, 3);
 });
+
+test("loads: logged per day, last and best come from earlier sessions", () => {
+  const st = fresh();
+  const d = (n) => L.addDays(MON, n);
+  run(st, (s) => { A.setLoad(s, d(0), "u-bench", 135); A.setLoad(s, d(4), "u-bench", 145); A.setLoad(s, d(7), "u-bench", 140); });
+  assert.deepEqual(L.loadHistory(st.state, "u-bench", d(7)), { last: { date: d(4), lb: 145 }, best: { date: d(4), lb: 145 } });
+  assert.deepEqual(L.loadHistory(st.state, "u-bench", d(0)).last, null);
+  assert.equal(L.loadHistory(st.state, "u-bench", d(14)).last.lb, 140);
+  run(st, (s) => A.setLoad(s, d(7), "u-bench", null));
+  assert.equal(L.getDay(st.state, d(7)).loads, undefined);
+  assert.ok(L.exercisesForDate(st.state, MON).find((e) => e.id === "u-bench").loaded);
+  assert.equal(L.exercisesForDate(st.state, TUE).some((e) => e.loaded), false); // home days carry no loads
+});
+
+test("gym days stay fixed: Mon A, Wed B, Fri A every week", () => {
+  const st = fresh();
+  for (const n of [0, 1, 2, 3]) {
+    assert.equal(L.routineForDate(st.state, L.addDays(MON, 7 * n)), "A");
+    assert.equal(L.routineForDate(st.state, L.addDays(WED, 7 * n)), "B");
+    assert.equal(L.routineForDate(st.state, L.addDays(MON, 7 * n + 4)), "A");
+  }
+});

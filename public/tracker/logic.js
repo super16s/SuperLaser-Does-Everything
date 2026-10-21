@@ -167,6 +167,11 @@ const STAGE = {
   "g-legcurl": 5, "g-ext": 5, "g-calf": 5, "a-calf": 5, "b-sissy": 5, "b-wall": 5,
 };
 
+// Exercises where you log a working weight (machines, barbells, dumbbells, cables).
+export const LOADED_IDS = new Set(["g-squat", "g-rdl", "g-legcurl", "g-calf", "g-split", "g-thrust", "g-ext",
+  "u-bench", "u-lat-raise", "u-row", "u-tri", "u-incdb", "u-pulldown", "u-ohp", "u-fly", "u-rear", "u-tri-oh"]);
+export const LOAD_STEPS = [-10, -5, -2.5, 2.5, 5, 10];
+
 export const REST_OPTIONS = [45, 60, 90, 120, 180];
 
 export const PHASES = [
@@ -309,8 +314,11 @@ export function mealTotals(state, date) {
 // ---------- Training ----------
 
 export function routineForDate(state, date) {
-  const override = getDay(state, date).workout?.override;
-  return override || SCHEDULE[weekdayOf(date)].routine;
+  return getDay(state, date).workout?.override || SCHEDULE[weekdayOf(date)].routine;
+}
+export function scheduleLabel(state, date) {
+  const r = routineForDate(state, date);
+  return r === "A" ? "Gym: Workout A" : r === "B" ? "Gym: Workout B" : SCHEDULE[weekdayOf(date)].label;
 }
 export const isLoadedRoutine = (r) => r === "A" || r === "B" || r === "H1" || r === "H2";
 
@@ -363,7 +371,7 @@ export function exercisesForDate(state, date) {
   return [...base, ...upper]
     .map((e) => {
       const key = LADDER_OF[e.id] || e.id;
-      return { ...e, sets: setsFor(state, date, e), isDensity: !!(e.density && dense), progKey: key, level: LADDERS[key] ? shownLadderVariant(state, key).i : progressLevel(state, key), ladder: !!LADDERS[key] };
+      return { ...e, loaded: LOADED_IDS.has(e.id), sets: setsFor(state, date, e), isDensity: !!(e.density && dense), progKey: key, level: LADDERS[key] ? shownLadderVariant(state, key).i : progressLevel(state, key), ladder: !!LADDERS[key] };
     })
     .map((e, i) => ({ e, i, st: e.isDensity ? 1.5 : STAGE[e.id] ?? 4 }))
     .sort((a, b) => a.st - b.st || a.i - b.i)
@@ -557,4 +565,18 @@ export function dueReminders(state, now = new Date(), graceMin = 10) {
     if (age >= 0 && age <= graceMin) due.push({ key, reminder: r });
   }
   return due;
+}
+
+// ---------- Loads ----------
+
+// Most recent logged load for an exercise strictly before `date`, and the best ever.
+export function loadHistory(state, exId, date) {
+  let last = null, best = null;
+  for (const d of Object.keys(state.days).sort()) {
+    const l = state.days[d].loads?.[exId];
+    if (!l) continue;
+    if (!best || l.lb > best.lb) best = { date: d, lb: l.lb };
+    if (d < date) last = { date: d, lb: l.lb };
+  }
+  return { last, best };
 }

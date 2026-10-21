@@ -40,7 +40,7 @@ export function header(S, ui, canUndo) {
     ${isToday ? "" : btn("Today", { a: "today" })}
   </div>
   <p class="muted" style="margin:6px 0 0">${dateLabel(ui.date)}${isToday ? " · today" : " · <strong>editing another day</strong>"} ·
-  ${week >= 1 ? `Week ${week}, Phase ${phase.n}: ${phase.name}` : "Before start date"} · ${esc(L.SCHEDULE[L.weekdayOf(ui.date)].label)}</p>`;
+  ${week >= 1 ? `Week ${week}, Phase ${phase.n}: ${phase.name}` : "Before start date"} · ${esc(L.scheduleLabel(S, ui.date))}</p>`;
 }
 export const TABS = [["today", "☀️", "Today"], ["workout", "🏋️", "Workout"], ["recovery", "🧘", "Recovery"], ["progress", "📈", "Progress"], ["settings", "⚙️", "Settings"]];
 export const tabs = (ui) => TABS.map(([id, ic, label]) => `<button type="button" data-a="tab" data-v="${id}"${ui.tab === id ? ' aria-current="page"' : ""}><span class="ic" aria-hidden="true">${ic}</span>${label}</button>`).join("");
@@ -107,6 +107,16 @@ function lists(S, ui) {
 
 // ---------- Workout ----------
 
+function loadRow(S, ui, e) {
+  const logged = L.getDay(S, ui.date).loads?.[e.id]?.lb, { last, best } = L.loadHistory(S, e.id, ui.date);
+  const draft = ui.loadDraft[e.id] ?? logged ?? last?.lb ?? 0;
+  const lastTxt = last ? `Last: ${last.lb} lb (${shortDate(last.date)})${best && best.lb > last.lb ? ` · Best: ${best.lb} lb` : ""}` : "No load logged yet";
+  return `<div class="row small" style="margin:6px 0"><span class="muted">${lastTxt}</span></div>
+    <div class="row small"><strong aria-live="polite">${draft} lb${logged != null && logged === draft ? " ✓" : ""}</strong>
+      ${L.LOAD_STEPS.map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "lstep", ex: e.id, v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} pounds for ${e.name}` })).join("")}
+      ${btn(logged != null && logged === draft ? "Logged" : "Log load", { a: "llog", ex: e.id }, { cls: "primary", aria: `Log ${draft} pounds for ${e.name}` })}${logged != null ? btn("Clear", { a: "lclear", ex: e.id }, { cls: "link" }) : ""}</div>`;
+}
+
 export function workout(S, ui) {
   const date = ui.date, routine = L.routineForDate(S, date), sched = L.SCHEDULE[L.weekdayOf(date)];
   const day = L.getDay(S, date), skipped = day.workout?.skipped;
@@ -131,6 +141,7 @@ export function workout(S, ui) {
     body = `${wave}${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
     ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}${e.cue ? `<div class="muted small">${esc(e.cue)}</div>` : ""}
       <div class="row small" style="margin-top:4px">${e.ladder ? `<span class="muted">Step ${e.level + 1} of ${L.LADDERS[e.progKey].length}</span>` : (e.level ? `<span class="muted">Load level ${e.level}</span>` : "")}${btn("Progress ↑", { a: "prog", key: e.progKey, dir: 1 }, { cls: "link", aria: `Progress ${e.name}` })}${e.level ? btn("Back off ↓", { a: "prog", key: e.progKey, dir: -1 }, { cls: "link", aria: `Back off ${e.name}` }) : ""}</div>
+      ${e.loaded ? loadRow(S, ui, e) : ""}
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
         return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;
