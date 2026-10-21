@@ -56,7 +56,7 @@ function mealCard(S, ui, slot) {
   const logged = log ? (log.multiplier > 0 ? `Logged: ${nf(log.calories * log.multiplier)} kcal · ${nf(log.protein * log.multiplier)} g protein` : "Logged: skipped (0 kcal)") : "Not logged";
   return `<section class="card" id="meal-${slot.id}" aria-label="${esc(slot.label)}">
     <div class="row between"><strong>${esc(p.label).toUpperCase()} · ${nf(p.calories)} kcal · ${nf(p.protein)}g protein</strong></div>
-    <div class="chips" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
+    <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
     ${alts.length > 1 ? `<label class="field">Swap meal <select data-c="swap" data-slot="${slot.id}">${alts.map((a) => `<option value="${esc(a.id)}"${a.id === p.id ? " selected" : ""}>${esc(a.label)} (${nf(a.calories)} kcal)</option>`).join("")}</select></label>` : ""}
     <div class="muted small" style="margin-top:4px">${esc(p.ingredients)}</div>
@@ -109,6 +109,20 @@ function lists(S, ui) {
 
 // ---------- Workout ----------
 
+function walkCard(S, ui, routine) {
+  const w = L.walkMinutes(S, ui.date);
+  const note = routine === "walk" ? "A 40-minute walk completes the day. 30 min is 75%, 20 min is 50%." : "The walk is the last quarter of a home workout. 40 min earns all of it, 30 min 75%, 20 min 50%.";
+  return `<section class="card"><h2>Walk</h2><div class="chips" role="group" aria-label="Walk minutes">${L.WALK_MINUTES.map((m) => btn(`${m} min`, { a: "walk", v: m }, { on: w === m })).join("")}</div><p class="muted small" style="margin:8px 0 0">${note}</p></section>`;
+}
+
+function heroHtml(S, ui, label, countText, dp) {
+  const pct = dp.pct, date = ui.date;
+  const wkAd = L.adherence(S, L.weekStartOf(date), L.addDays(L.weekStartOf(date), 6), L.ymd());
+  return `<div class="hero${pct === 100 ? " complete" : ""}"><div class="row between"><strong>${pct === 100 ? "🎉 Workout complete" : label}</strong><span>${countText} · ${pct}%</span></div>
+      ${scene(pct, `${date}|wk`)}
+      ${wkAd.scheduled ? `<div class="muted small">This week: ${wkAd.completed} of ${wkAd.scheduled} workouts done</div>` : ""}</div>`;
+}
+
 function guided(S, ui, exs) {
   const date = ui.date, day = L.getDay(S, date), cur = L.nextSet(S, date), last = L.lastLoggedSet(S, date);
   const pctOf = (e) => Math.round((100 * Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length) / e.sets);
@@ -146,9 +160,10 @@ export function workout(S, ui) {
   const picker = `<div class="chips" role="group" aria-label="Today's routine">${opts.map(([v, l]) => btn(l, { a: "override", v }, { on: (ov || "") === v })).join("")}</div>`;
   let body;
   if (!L.isLoadedRoutine(routine)) {
-    const walked = day.checks?.walk?.status === "done";
-    body = `<p>${routine === "walk" ? "Recovery walk or gentle mobility. Keep arms relaxed; nothing here counts against workout adherence." : "Rest day. Nothing here counts against workout adherence."}</p>
-      ${routine === "walk" ? btn(walked ? "Walk done" : "Mark walk done", { a: "walkdone" }, { on: walked }) : ""}`;
+    const dp = L.dayProgress(S, date);
+    body = routine === "walk"
+      ? `${heroHtml(S, ui, "Today's walk", `<strong>${dp.walk}</strong> / ${L.WALK_TARGET} min`, dp)}${walkCard(S, ui, routine)}<p class="muted small">Recovery walk or gentle mobility. Keep arms relaxed; nothing here counts against workout adherence.</p>`
+      : `<p>Rest day. Nothing here counts against workout adherence.</p>`;
   } else {
     const exs = L.exercisesForDate(S, date), prog = L.workoutProgress(S, date);
     const hasUpper = exs.some((e) => e.upper);
@@ -159,13 +174,11 @@ export function workout(S, ui) {
     const w = L.waveInfo(S, date);
     const wave = `<div class="alert info"><strong>Week ${w.weekInBlock + 1} of 4${w.deload ? " — deload" : ""}</strong> · stop each set with ${w.rir}. Never to failure.
       <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.${L.isDensityWeek(S, date) ? " <strong>Density week:</strong> the marked leg lift is 8 sets with short rests. Keep it to about 2 reps in reserve, use a load where the last sets are hard but clean, and stop early if form or neck/elbow comfort slips." : ""}</div></div>`;
-    const wkPct = prog.total ? Math.round((100 * prog.done) / prog.total) : 0;
-    const wkAd = L.adherence(S, L.weekStartOf(date), L.addDays(L.weekStartOf(date), 6), L.ymd());
-    const headline = `<div class="hero${wkPct === 100 ? " complete" : ""}"><div class="row between"><strong>${wkPct === 100 ? "🎉 Workout complete" : "Today's workout"}</strong><span><strong>${prog.done}</strong> / ${prog.total} sets · ${wkPct}%</span></div>
-      ${scene(wkPct, `${date}|wk`)}
-      ${wkAd.scheduled ? `<div class="muted small">This week: ${wkAd.completed} of ${wkAd.scheduled} workouts done</div>` : ""}</div>`;
+    const dp = L.dayProgress(S, date);
+    const wkPct = dp.pct;
+    const headline = heroHtml(S, ui, "Today's workout", `<strong>${prog.done}</strong> / ${prog.total} sets${L.hasWalk(routine) ? ` · walk ${dp.walk}/${L.WALK_TARGET} min` : ""}`, dp);
     const modeToggle = `<div class="chips" role="group" aria-label="Workout view" style="margin:8px 0">${btn("Guided: tap through", { a: "gmode", v: 1 }, { on: ui.guided })}${btn("List: all sets", { a: "gmode", v: 0 }, { on: !ui.guided })}</div>`;
-    body = `${headline}${wave}${readiness}${modeToggle}
+    body = `${headline}${L.hasWalk(routine) ? walkCard(S, ui, routine) : ""}${wave}${readiness}${modeToggle}
     ${ui.guided ? guided(S, ui, exs) : exs.map((e) => {
       const exDone = Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length, exPct = Math.round((100 * exDone) / e.sets);
       return `<div class="exblock${exPct === 100 ? " complete" : ""}" style="margin:12px 0"><div class="pbar mini" aria-hidden="true"><div class="pfill" data-key="${date}|ex-${e.id}" data-pct="${exPct}" style="width:${exPct}%"></div></div><strong>${esc(e.name)}</strong>${exPct === 100 ? ` <span class="state s-done">✓ Complete</span>` : ""} <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}${e.cue ? `<div class="muted small">${esc(e.cue)}</div>` : ""}

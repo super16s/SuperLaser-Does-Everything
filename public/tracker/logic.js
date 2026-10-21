@@ -421,12 +421,31 @@ export function workoutProgress(state, date) {
   }
   return { total, done, logged };
 }
+// Walks (20/30/40 min) count toward the day: a walk day is just the walk (40 min =
+// 100%); a home workout is 75% sets + 25% walk, so it only completes with both.
+export const WALK_MINUTES = [20, 30, 40];
+export const WALK_TARGET = 40;
+export const HOME_WALK_SHARE = 0.25;
+export const hasWalk = (routine) => routine === "walk" || routine === "H1" || routine === "H2";
+export const walkMinutes = (state, date) => getDay(state, date).walk?.minutes ?? 0;
+export const walkPct = (state, date) => Math.min(100, Math.round((100 * walkMinutes(state, date)) / WALK_TARGET));
+export function dayProgress(state, date) {
+  const r = routineForDate(state, date), p = workoutProgress(state, date);
+  const walk = walkMinutes(state, date), wPct = walkPct(state, date);
+  const setsPct = p.total ? (100 * p.done) / p.total : 0;
+  if (r === "walk") return { pct: wPct, complete: wPct === 100, setsPct: 0, walkPct: wPct, walk };
+  if (r === "H1" || r === "H2") {
+    const pct = Math.round((1 - HOME_WALK_SHARE) * setsPct + HOME_WALK_SHARE * wPct);
+    return { pct, complete: p.total > 0 && p.done === p.total && wPct === 100, setsPct, walkPct: wPct, walk };
+  }
+  return { pct: Math.round(setsPct), complete: p.total > 0 && p.done === p.total, setsPct, walkPct: 0, walk: 0 };
+}
 export function workoutStatus(state, date) {
   const w = getDay(state, date).workout;
   if (w?.skipped) return "skipped";
-  const p = workoutProgress(state, date);
-  if (p.total && p.done === p.total) return "done";
-  if (p.done > 0) return "partial";
+  const d = dayProgress(state, date);
+  if (d.complete) return "done";
+  if (d.pct > 0) return "partial";
   return null;
 }
 // Adherence only counts scheduled loaded workouts on days that have ended (or
@@ -648,6 +667,11 @@ export function workoutExport(state, date) {
     lines.push(`Sets done: ${prog.done}/${prog.total}${prog.total ? ` (${Math.round((100 * prog.done) / prog.total)}%)` : ""}${day.workout?.skipped ? " · workout skipped" : ""}`);
   } else lines.push("No loaded workout scheduled.");
   const rows = [];
+  if (hasWalk(routine)) {
+    const wm = walkMinutes(state, date);
+    lines.push(`Walk: ${wm ? `${wm} min` : "not logged"}`);
+    rows.push([date, routine, "walk", `Walk (${wm || 0} min)`, 1, wm ? "done" : "not logged", "", getDay(state, date).walk?.loggedAt ?? ""]);
+  }
   for (const e of exs) {
     const load = day.loads?.[e.id]?.lb;
     const marks = Array.from({ length: e.sets }, (_, i) => {
@@ -663,5 +687,5 @@ export function workoutExport(state, date) {
   if (pain.length) lines.push("", "Symptoms: " + pain.map((r) => `${PAIN.areas.find((a) => a.id === r.area)?.label} ${r.severity}/10 (${PAIN.times.find((t) => t.id === r.tod)?.label.toLowerCase()})`).join(", "));
   const q = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const csv = [["date", "routine", "exercise_id", "exercise", "set", "status", "load_lb", "logged_at"].join(","), ...rows.map((r) => r.map(q).join(","))].join("\n");
-  return { text: lines.join("\n"), csv, hasData: prog.logged > 0 || exs.some((e) => day.loads?.[e.id]) };
+  return { text: lines.join("\n"), csv, hasData: prog.logged > 0 || walkMinutes(state, date) > 0 || exs.some((e) => day.loads?.[e.id]) };
 }

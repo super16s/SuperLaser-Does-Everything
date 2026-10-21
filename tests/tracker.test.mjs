@@ -436,3 +436,72 @@ test("meal ideas are complete and plain", () => {
   for (const m of L.MEAL_IDEAS) assert.ok(m.name && m.ingredients && m.calories > 0 && m.protein > 0, m.name);
   assert.ok(L.MEAL_IDEAS.some((m) => m.name === "Chicken and rice") && L.MEAL_IDEAS.some((m) => m.name === "Beef and eggs"));
 });
+
+test("walk day: 20/30/40 min = 50/75/100% and 40 completes the day; tap again clears", () => {
+  const st = fresh();
+  const sat = L.addDays(MON, 5);
+  assert.equal(L.routineForDate(st.state, sat), "walk");
+  assert.deepEqual([L.dayProgress(st.state, sat).pct, L.workoutStatus(st.state, sat)], [0, null]);
+  const at = (m) => { run(st, (s) => A.setWalk(s, sat, m)); return [L.dayProgress(st.state, sat).pct, L.workoutStatus(st.state, sat)]; };
+  assert.deepEqual(at(20), [50, "partial"]);
+  assert.deepEqual(at(30), [75, "partial"]);
+  assert.deepEqual(at(40), [100, "done"]);
+  assert.equal(L.dayProgress(st.state, sat).complete, true);
+  assert.deepEqual(at(40), [0, null]); // same minutes again clears
+  assert.equal(L.getDay(st.state, sat).walk, undefined);
+});
+
+test("home workout: 75% sets + 25% walk; complete only with every set and a 40-min walk", () => {
+  const st = fresh();
+  const exs = L.exercisesForDate(st.state, TUE);
+  assert.equal(L.routineForDate(st.state, TUE), "H1");
+  for (const e of exs) for (let i = 0; i < e.sets; i++) run(st, (s) => A.setSet(s, TUE, e.id, i, "done"));
+  assert.deepEqual([L.dayProgress(st.state, TUE).pct, L.workoutStatus(st.state, TUE)], [75, "partial"]); // sets only
+  run(st, (s) => A.setWalk(s, TUE, 20));
+  assert.deepEqual([L.dayProgress(st.state, TUE).pct, L.workoutStatus(st.state, TUE)], [88, "partial"]); // 75 + 12.5
+  run(st, (s) => A.setWalk(s, TUE, 30));
+  assert.equal(L.dayProgress(st.state, TUE).pct, 94);
+  run(st, (s) => A.setWalk(s, TUE, 40));
+  assert.deepEqual([L.dayProgress(st.state, TUE).pct, L.workoutStatus(st.state, TUE)], [100, "done"]);
+  // a walk alone is a partial home workout, never complete
+  const st2 = fresh();
+  run(st2, (s) => A.setWalk(s, TUE, 40));
+  assert.deepEqual([L.dayProgress(st2.state, TUE).pct, L.workoutStatus(st2.state, TUE)], [25, "partial"]);
+});
+
+test("gym days ignore walks; walk shows in the export", () => {
+  const st = fresh();
+  run(st, (s) => A.setWalk(s, MON, 40));
+  assert.equal(L.dayProgress(st.state, MON).pct, 0);
+  assert.equal(L.hasWalk("A"), false);
+  const sat = L.addDays(MON, 5);
+  run(st, (s) => A.setWalk(s, sat, 30));
+  const x = L.workoutExport(st.state, sat);
+  assert.equal(x.hasData, true);
+  assert.match(x.text, /Walk: 30 min/);
+  assert.match(x.csv, /walk,Walk \(30 min\),1,done/);
+});
+
+test("every screen renders without throwing, on every kind of day, in both workout views", async () => {
+  const V = await import("../public/tracker/views.js");
+  const st = fresh();
+  run(st, (s) => { A.setMeal(s, MON, "lunch", 1); A.setWeight(s, MON, 159.5); A.setLoad(s, MON, "g-squat", 135); A.setWalk(s, L.addDays(MON, 5), 30); A.painSet(s, MON, "morning", ["elbow"], { severity: 3, redFlags: ["pop"] }); });
+  const exsMon = L.exercisesForDate(st.state, MON);
+  run(st, (s) => A.setSet(s, MON, exsMon[0].id, 0, "done"));
+  const base = { tab: "today", date: MON, painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, rest: null, restLen: 60, yoga: null, banners: [], guided: true };
+  for (let i = 0; i < 14; i++) {                       // two full weeks: gym, home, walk and rest days
+    const date = L.addDays(MON, i);
+    for (const guided of [true, false]) {
+      const ui = { ...base, date, guided };
+      for (const [name, fn] of Object.entries({ today: V.today, workout: V.workout, recovery: V.recovery, progress: V.progressView, settings: V.settings })) {
+        const html = fn(st.state, ui);
+        assert.equal(typeof html, "string", `${name} on ${date}`);
+        assert.ok(html.length > 50, `${name} on ${date} is empty`);
+      }
+      assert.ok(V.header(st.state, ui, true).includes("Gain Tracker"));
+    }
+  }
+  assert.match(V.workout(st.state, { ...base, date: MON }), /Guided: tap through/);
+  assert.match(V.workout(st.state, { ...base, date: L.addDays(MON, 5) }), /Today's walk/);
+  assert.match(V.workout(st.state, { ...base, date: TUE }), /class="card"><h2>Walk/);
+});

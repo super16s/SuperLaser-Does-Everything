@@ -226,6 +226,11 @@ export const actions = {
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
+  setWalk(s, date, minutes) {
+    const d = day(s, date);
+    if (!minutes || d.walk?.minutes === minutes) delete d.walk; else d.walk = { minutes, ...stamp() };
+    prune(s, date);
+  },
   setLoad(s, date, exId, lb) {
     const d = day(s, date);
     d.loads ||= {};

@@ -223,7 +223,7 @@ const handlers = {
 
   override: (d) => act((s) => A.setWorkoutOverride(s, ui.date, d.v || null), "Routine changed"),
   skipworkout() { const cur = !!L.getDay(S(), ui.date).workout?.skipped; act((s) => A.skipWorkout(s, ui.date, !cur), cur ? "Skip undone" : "Workout skipped"); },
-  walkdone: () => act((s) => A.setCheck(s, ui.date, "walk", "done"), "Walk"),
+  walk(d) { const had = L.walkMinutes(S(), ui.date) === +d.v; act((s) => A.setWalk(s, ui.date, +d.v), had ? "Walk cleared" : `Walk ${d.v} min logged`); },
   set(d) {
     if (suppress) return;
     const was = L.getDay(S(), ui.date).sets?.[L.setKey(d.ex, +d.i)]?.status;
