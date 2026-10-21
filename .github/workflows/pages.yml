@@ -33,6 +33,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
+      contents: read   # a job-level block replaces the defaults; checkout needs this on private repos
       pages: write
       id-token: write
     environment:
@@ -51,6 +52,8 @@ jobs:
           printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=tracker/"><title>Gain Tracker</title><a href="tracker/">Open the Gain Tracker</a>\n' > site/index.html
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # turn Pages on if it isn't already (needs permission; otherwise enable it in Settings → Pages)
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
