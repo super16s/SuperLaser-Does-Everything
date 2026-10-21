@@ -322,6 +322,10 @@ const handlers = {
     if (S().mealPresets.filter((x) => x.slot === p.slot).length < 2) return toast("Each meal slot needs at least one preset.", false);
     act((s) => { s.mealPresets = s.mealPresets.filter((x) => x.id !== d.id); }, "Preset deleted");
   },
+  addidea(d) {
+    const m = L.MEAL_IDEAS[+d.i], slot = $("#newslot").value, id = store.uid();
+    act((s) => s.mealPresets.push({ id, slot, label: m.name, calories: m.calories, protein: m.protein, ingredients: m.ingredients, amounts: "", isDefault: false }), `${m.name} added to ${L.SLOTS.find((x) => x.id === slot).label}`);
+  },
   addpreset() {
     const slot = $("#newslot").value, id = store.uid();
     act((s) => s.mealPresets.push({ id, slot, label: "New preset", calories: 500, protein: 25, ingredients: "", isDefault: false }), "Preset added");

@@ -14,7 +14,7 @@ const MAX_UNDO = 25;
 export function defaultState(now = new Date()) {
   return {
     version: 1,
-    nutritionVersion: 3,
+    nutritionVersion: 4,
     profile: { startingWeight: 159, goalWeight: 174, calorieTarget: 2850, proteinTarget: 150, startDate: ymd(now), timezone: localTz() },
     mealPresets: structuredClone(DEFAULT_PRESETS),
     boosters: structuredClone(DEFAULT_BOOSTERS),
@@ -31,8 +31,8 @@ export function defaultState(now = new Date()) {
 
 function normalize(s) {
   const d = defaultState();
-  const migrateNutrition = s.nutritionVersion !== 3;
-  const out = { ...d, ...s, nutritionVersion: 3 };
+  const migrateNutrition = s.nutritionVersion !== 4;
+  const out = { ...d, ...s, nutritionVersion: 4 };
   for (const k of ["profile", "reminderCategories", "reminderState"]) out[k] = { ...d[k], ...(s[k] || {}) };
   delete out.clearance; // legacy: clinician-clearance gates were removed
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};

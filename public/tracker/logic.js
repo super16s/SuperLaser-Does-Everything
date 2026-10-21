@@ -14,26 +14,57 @@ export const SLOTS = [
 
 export const DEFAULT_PRESETS = [
   { id: "breakfast-default", slot: "breakfast", label: "Breakfast", calories: 765, protein: 35,
-    ingredients: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+    ingredients: "Oats, soy milk, banana, peanut butter, eggs",
+    amounts: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
   { id: "lunch-default", slot: "lunch", label: "Lunch", calories: 800, protein: 50,
-    ingredients: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
+    ingredients: "Chicken and rice, beans, vegetables",
+    amounts: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
   { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 530, protein: 29,
-    ingredients: "1 cup soy milk, 1/2 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+    ingredients: "Soy milk, plant protein, banana, peanut butter, oats",
+    amounts: "1 cup soy milk, 1/2 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
   { id: "dinner-default", slot: "dinner", label: "Dinner", calories: 650, protein: 40,
-    ingredients: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
+    ingredients: "Turkey and pasta with tomato sauce, vegetables, olive oil",
+    amounts: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
   { id: "snack-default", slot: "snack", label: "Greek yogurt snack", calories: 80, protein: 12,
-    ingredients: "1/2 cup plain Greek yogurt" },
+    ingredients: "Plain Greek yogurt",
+    amounts: "1/2 cup plain Greek yogurt" },
+];
+
+// One-tap meal ideas for the preset library. Calories/protein are rough starter
+// estimates for a typical plate; edit them to match your portions.
+export const MEAL_IDEAS = [
+  { name: "Chicken and rice", ingredients: "Chicken, rice, vegetables", calories: 700, protein: 45 },
+  { name: "Beef and eggs", ingredients: "Ground beef, eggs, toast", calories: 720, protein: 60 },
+  { name: "Steak and potatoes", ingredients: "Steak, potatoes, vegetables", calories: 700, protein: 47 },
+  { name: "Turkey and pasta", ingredients: "Ground turkey, pasta, tomato sauce", calories: 650, protein: 40 },
+  { name: "Salmon and potatoes", ingredients: "Salmon, potatoes, olive oil, vegetables", calories: 700, protein: 38 },
+  { name: "Tuna and rice", ingredients: "Tuna, rice, mayo, vegetables", calories: 600, protein: 50 },
+  { name: "Burrito bowl", ingredients: "Chicken, rice, beans, cheese, salsa", calories: 750, protein: 50 },
+  { name: "Eggs and oats", ingredients: "Eggs, oats, banana, peanut butter", calories: 700, protein: 33 },
+  { name: "Yogurt and nuts", ingredients: "Greek yogurt, nuts, honey", calories: 300, protein: 22 },
+  { name: "Peanut butter banana toast", ingredients: "Bread, peanut butter, banana", calories: 450, protein: 14 },
 ];
 
 // Earlier defaults for presets that changed in later nutrition versions (v1: dairy;
-// v2: full-scoop plant protein). Used only to migrate presets the user never edited.
+// v2: full-scoop plant protein; v3: measured ingredient lists, now plain language). Used only to migrate presets the user never edited.
 export const LEGACY_PRESETS = {
   "breakfast-default": [
     { label: "Breakfast", calories: 800, protein: 35, ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+    { label: "Breakfast", calories: 765, protein: 35, ingredients: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+  ],
+  "lunch-default": [
+    { label: "Lunch", calories: 800, protein: 50, ingredients: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
   ],
   "shake-default": [
     { label: "Weight-gain shake", calories: 530, protein: 18, ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
     { label: "Plant-protein shake", calories: 590, protein: 41, ingredients: "1 cup soy milk, 1 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+    { label: "Plant-protein shake", calories: 530, protein: 29, ingredients: "1 cup soy milk, 1/2 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+  ],
+  "dinner-default": [
+    { label: "Dinner", calories: 650, protein: 40, ingredients: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
+  ],
+  "snack-default": [
+    { label: "Greek yogurt snack", calories: 80, protein: 12, ingredients: "1/2 cup plain Greek yogurt" },
   ],
 };
 

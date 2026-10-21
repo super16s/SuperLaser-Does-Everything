@@ -14,7 +14,7 @@ test("calendar assumptions used by the tests", () => {
   assert.equal(L.weekStartOf(SUN), MON);
 });
 
-test("all five meals Full → 2,825 kcal / 166 g (v3 presets)", () => {
+test("all five meals Full → 2,825 kcal / 166 g (v4 presets)", () => {
   const st = fresh();
   for (const slot of L.SLOTS) run(st, (s) => A.setMeal(s, MON, slot.id, 1));
   assert.deepEqual(L.mealTotals(st.state, MON), { calories: 2825, protein: 166 });
@@ -225,12 +225,13 @@ test("nutrition migration updates untouched older presets only, and keeps user e
   assert.equal(get(a, "breakfast-default").calories, 765);
   assert.match(get(a, "breakfast-default").ingredients, /soy milk/);
   assert.equal(get(a, "shake-default").calories, 999);
-  assert.equal(a.state.nutritionVersion, 3);
+  assert.equal(a.state.nutritionVersion, 4);
 
   const v2 = structuredClone(base); // full-scoop version that shipped briefly
   setPreset(v2, "shake-default", L.LEGACY_PRESETS["shake-default"][1]);
   const b = load(v2);
   assert.deepEqual([get(b, "shake-default").calories, get(b, "shake-default").protein], [530, 29]);
+  assert.equal(get(b, "shake-default").ingredients, "Soy milk, plant protein, banana, peanut butter, oats");
 
   const again = createStore(mem()); again.importJson(a.exportJson());
   assert.equal(get(again, "shake-default").calories, 999); // idempotent
@@ -411,4 +412,27 @@ test("workout export: text and CSV reflect sets, loads and status; empty day rep
   assert.match(lines[1], /^2026-10-19,A,g-squat,.*,1,done,135,/);
   assert.match(lines[2], /,2,skipped,135,/);
   assert.equal(L.workoutExport(st.state, SUN).text.includes("No loaded workout scheduled."), true);
+});
+
+test("plain-language ingredients: defaults have no measurements; every old default migrates; edits survive", () => {
+  const measured = /\b\d+(\.\d+)?\s*(oz|cups?|tbsp|tsp|g|lb)\b|\d\/\d/i;
+  for (const p of L.DEFAULT_PRESETS) { assert.ok(!measured.test(p.ingredients), p.ingredients); assert.ok(p.amounts.length > 0); }
+  const base = structuredClone(createStore(mem()).state); delete base.nutritionVersion;
+  for (const [id, olds] of Object.entries(L.LEGACY_PRESETS)) for (const old of olds) {
+    const state = structuredClone(base);
+    Object.assign(state.mealPresets.find((p) => p.id === id), old);
+    const st = createStore(mem()); st.importJson(JSON.stringify(state));
+    const got = st.state.mealPresets.find((p) => p.id === id), want = L.DEFAULT_PRESETS.find((p) => p.id === id);
+    assert.deepEqual([got.ingredients, got.calories, got.protein, got.amounts], [want.ingredients, want.calories, want.protein, want.amounts]);
+  }
+  const edited = structuredClone(base);
+  Object.assign(edited.mealPresets.find((p) => p.id === "lunch-default"), L.LEGACY_PRESETS["lunch-default"][0], { ingredients: "my own lunch" });
+  const st = createStore(mem()); st.importJson(JSON.stringify(edited));
+  assert.equal(st.state.mealPresets.find((p) => p.id === "lunch-default").ingredients, "my own lunch");
+});
+
+test("meal ideas are complete and plain", () => {
+  assert.ok(L.MEAL_IDEAS.length >= 8);
+  for (const m of L.MEAL_IDEAS) assert.ok(m.name && m.ingredients && m.calories > 0 && m.protein > 0, m.name);
+  assert.ok(L.MEAL_IDEAS.some((m) => m.name === "Chicken and rice") && L.MEAL_IDEAS.some((m) => m.name === "Beef and eggs"));
 });
