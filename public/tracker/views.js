@@ -120,9 +120,9 @@ export function workout(S, ui) {
       ${routine === "walk" ? btn(walked ? "Walk done" : "Mark walk done", { a: "walkdone" }, { on: walked }) : ""}`;
   } else {
     const exs = L.exercisesForDate(S, date), prog = L.workoutProgress(S, date);
-    const hasUpper = exs.some((e) => e.clearanceRequired);
+    const hasUpper = exs.some((e) => e.upper);
     const rd = day.readiness || {}, rdOk = L.READINESS.every((r) => rd[r.id]);
-    const readiness = hasUpper ? `<div class="alert ${rdOk ? "info" : ""}"><strong>Upper-body readiness</strong>
+    const readiness = hasUpper ? `<div class="alert ${rdOk ? "info" : ""}"><strong>Pre-session check (arm and neck)</strong>
       <div class="stack" style="margin-top:6px">${L.READINESS.map((r) => btn(r.label, { a: "ready", id: r.id }, { on: !!rd[r.id] })).join("")}</div>
       <p class="small" style="margin:8px 0 0">${rdOk ? "All clear for today. Add load or reps gradually; stop if symptoms appear." : "If any of these is a no, do the lower-body sets only today and skip the upper-body ones."}</p></div>` : "";
     const w = L.waveInfo(S, date);
@@ -139,19 +139,18 @@ export function workout(S, ui) {
       <div style="margin-top:8px">${btn("Symptoms provoked — stop & check in", { a: "provoked" }, { cls: "danger" })}</div></div>
     <div class="row">${btn(skipped ? "Workout skipped (tap to undo)" : "Skip today's workout", { a: "skipworkout" }, { on: !!skipped })}</div>`;
   }
-  const locked = L.UPPER_BODY.filter((u) => !L.isExerciseUnlocked(S, u.id));
   return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${L.ROUTINE_LABEL[ov]}</em>` : ""}</h2>${picker}
     <div id="rest-box" class="row" style="margin:10px 0"><span class="timer" id="rtime" aria-live="off">${ui.rest ? "" : ""}</span>
       ${ui.rest ? btn("Cancel rest", { a: "restcancel" }) : ""}</div>
     <div class="row small" role="group" aria-label="Rest timer length"><span class="muted">Auto-rest after a set:</span>${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
     ${body}</section>
-    <section class="card locked"><h2>🔒 Upper-body exercises (locked)</h2>
-      <p class="muted small">These unlock only after you record clinician clearance <em>and</em> flag each exercise as cleared and pain-free in Settings → Injury clearance. The calendar never unlocks them. Until then, keep training legs.</p>
-      <ul class="checklist">${locked.map((u) => `<li><span class="glyph" aria-hidden="true">🔒</span><span>${esc(u.name)} <span class="muted small">— ${S.clearance.ladder.clearance ? "needs cleared + pain-free flags" : "needs documented clearance"}</span></span></li>`).join("")}</ul>
-      <p class="small"><strong>Avoid:</strong> bicep curls, chin-ups and other underhand pulling, forceful palm-up twisting, painful golf swings, shoulder-loaded yoga. Build rows and pulldowns gradually with a neutral grip.</p></section>
+    <section class="card"><h2>Training rules</h2>
+      <ul class="small" style="padding-left:18px;margin:0"><li>No bicep curls, chin-ups or other underhand pulling. Rows, pulldowns and pull-ups are overhand or neutral grip.</li>
+      <li>Add load in small steps, about 2 reps from failure, and never to failure on pulling.</li>
+      <li><strong>Stop that lift</strong> and get it looked at if you get a pop, bruising near the inside of the elbow, a visible bulge, weakness turning the palm up, or numbness/tingling that worsens.</li></ul></section>
     <details class="card"><summary><strong>90-day phases</strong></summary><table class="plain"><thead><tr><th>Phase</th><th>Plan</th><th>Advance only when…</th></tr></thead><tbody>
       ${L.PHASES.map((p) => `<tr><td><strong>${p.n} ${p.name}</strong><br><span class="muted">Wk ${p.weeks}</span></td><td>${p.plan}</td><td>${p.gate}</td></tr>`).join("")}</tbody></table>
-      <p class="muted small">Weeks are a guide, not a gate. Nothing auto-unlocks on a week number.</p></details>`;
+      <p class="muted small">Weeks are a guide. Your symptoms, not the calendar, decide when to add load.</p></details>`;
 }
 
 // ---------- Recovery ----------
@@ -194,8 +193,8 @@ export function recovery(S, ui) {
     ${form}${areaKey === "none" ? (allNone ? `<p>Logged: no symptoms.</p>` : `<p class="muted">Tap “None” again after choosing to record no symptoms.</p>`) : sevRows}
     ${areaKey !== "none" ? chipRow("Quality", "quality", L.PAIN.qualities, first.quality) + chipRow("Trigger", "trigger", L.PAIN.triggers, first.trigger) + chipRow("Compared with yesterday", "trend", L.PAIN.trends, first.trend) + `<h3>Warning signs</h3><div class="chips" role="group" aria-label="Warning signs">${L.PAIN.redFlags.map((f) => btn(f.label, { a: "flag", v: f.id }, { on: first.redFlags?.includes(f.id) })).join("")}${btn("None", { a: "flag", v: "none" }, { on: first.redFlags?.includes("none") })}</div>` : ""}
     <div class="row" style="margin-top:12px">${btn(skipped ? "Skipped ✓" : "Skip this check-in", { a: "pskip" }, { on: skipped })}${rows.length ? btn("Clear entry", { a: "pclear" }) : ""}</div>
-    <p class="muted small">Logging helps you spot patterns; it is not a diagnosis or clearance. Deep pain at the front of the elbow with palm-up bending can involve the distal biceps tendon — have it assessed before loading or golfing. Electric or locking neck symptoms also warrant assessment.</p></section>
-  <section class="card"><h2>7-day trend</h2>${trendCharts(S, ui)}<p class="muted small">Use this to guide your own review (and a clinician's), not as automatic clearance.</p></section>
+    <p class="muted small">Logging helps you spot patterns; it is not a diagnosis or clearance. If deep pain at the front of the elbow with palm-up bending returns or worsens, stop that lift and get it assessed (it can involve the distal biceps tendon). Electric or locking neck symptoms also warrant assessment.</p></section>
+  <section class="card"><h2>7-day trend</h2>${trendCharts(S, ui)}<p class="muted small">Use this to guide your own review (and a clinician's if you see one).</p></section>
   <section class="card"><h2>Evening yoga + meditation · 12 min</h2>
     ${y ? yogaRunner(ui) : `<div class="row">${btn("▶ Start 12-minute routine", { a: "yogastart" }, { cls: "primary" })}</div>`}
     <ul class="checklist" style="margin-top:10px">${stages}</ul>
@@ -234,7 +233,6 @@ function reviewCard(S, ui) {
     <div class="stack">${chk("rvWeight", "Reviewed weekly average weight")}${chk("rvNutrition", "Reviewed nutrition adherence")}${chk("rvTraining", "Reviewed training completion")}${chk("rvSymptoms", "Reviewed elbow and neck symptom trend")}</div>
     <h3>Next-week calorie target</h3><div class="chips" role="group" aria-label="Calorie adjustment">${L.REVIEW_CALORIE_OPTIONS.map((o) => btn(o === "Keep" ? o : `${o} kcal/day`, { a: "rvpick", k: "calorieAdjustment", v: o }, { on: r.calorieAdjustment === o })).join("")}</div>
     <h3>Training status</h3><div class="chips" role="group" aria-label="Training status">${L.REVIEW_TRAINING_OPTIONS.map((o) => btn(o, { a: "rvpick", k: "trainingDecision", v: o }, { on: r.trainingDecision === o })).join("")}</div>
-    ${r.trainingDecision === "Progress if cleared" ? `<p class="muted small">“If cleared” means the Settings clearance gates, not this selection.</p>` : ""}
     <h3>Waist (inches, optional)</h3><div class="row"><span class="big">${waist.toFixed(2)}</span>${[-1, -0.25, 0.25, 1].map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "waist", v })).join("")}${btn(r.waistIn === waist ? "Logged ✓" : "Log waist", { a: "waistlog" }, { cls: "primary" })}</div>
     <p class="muted small">The starting value is a placeholder — step to your measurement.</p></section>`;
 }
@@ -270,14 +268,6 @@ export function progressView(S, ui) {
 const stepper = (label, field, val, step, unit = "") => `<div class="row between" style="margin:6px 0"><span>${label}: <strong>${val}${unit}</strong></span><span class="row">${btn("−", { a: "pstep", f: field, v: -step }, { aria: `Decrease ${label}` })}${btn("+", { a: "pstep", f: field, v: step }, { aria: `Increase ${label}` })}</span></div>`;
 
 export function settings(S, ui) {
-  const lad = L.LADDER.map((l, i) => {
-    const on = !!S.clearance.ladder[l.id], avail = L.ladderStepAvailable(S, i);
-    return `<li>${btn(`<span class="glyph" aria-hidden="true">${on ? "✓" : avail ? "○" : "🔒"}</span><span style="flex:1">${esc(l.label)}</span><span class="state">${on ? (i === 0 ? "Yes" : "Done") : avail ? "Not yet" : "Locked"}</span>`, { a: "ladder", id: l.id }, { cls: "item", disabled: !on && !avail, on, aria: `${l.label}: ${on ? "done" : avail ? "not yet" : "locked"}` })}</li>`;
-  }).join("");
-  const exFlags = L.UPPER_BODY.map((u) => {
-    const f = S.clearance.exercises[u.id] || {}, can = !!S.clearance.ladder.clearance;
-    return `<div style="margin:8px 0"><strong>${esc(u.name)}</strong> ${L.isExerciseUnlocked(S, u.id) ? "· <span class=\"s-done\">Unlocked ✓</span>" : "· 🔒 locked"}<div class="row">${btn("Clinician cleared", { a: "exflag", id: u.id, f: "cleared" }, { on: !!f.cleared, disabled: !can })}${btn("Pain-free at current level", { a: "exflag", id: u.id, f: "painFree" }, { on: !!f.painFree, disabled: !can })}</div></div>`;
-  }).join("");
   const presets = S.mealPresets.map((p) => `<details class="card" style="margin:8px 0"><summary><strong>${esc(p.label)}</strong>&nbsp;<span class="muted">${esc(L.SLOTS.find((s) => s.id === p.slot)?.label)} · ${nf(p.calories)} kcal · ${nf(p.protein)} g</span></summary>
     <label class="field">Name<input type="text" data-c="preset" data-id="${esc(p.id)}" data-f="label" value="${esc(p.label)}"></label>
     <label class="field">Meal slot<select data-c="preset" data-id="${esc(p.id)}" data-f="slot">${L.SLOTS.map((s) => `<option value="${s.id}"${s.id === p.slot ? " selected" : ""}>${s.label}</option>`).join("")}</select></label>
@@ -300,9 +290,6 @@ export function settings(S, ui) {
     ${stepper("Starting weight", "startingWeight", S.profile.startingWeight, 0.5, " lb")}${stepper("Goal weight", "goalWeight", S.profile.goalWeight, 0.5, " lb")}
     <label class="field">Program start date<input type="date" data-c="start" value="${S.profile.startDate}"></label>
     <p class="muted small">Timezone: ${esc(S.profile.timezone)}. Start/goal weights are scale-weight targets, not lean mass. Calorie targets are estimates.</p></section>
-  <section class="card"><h2>Injury clearance gates</h2>
-    <p class="muted small">Record only what actually happened. Each step unlocks the next; upper-body exercises need clearance <em>plus</em> both per-exercise flags.</p>
-    <ul class="checklist">${lad}</ul><h3>Per-exercise flags</h3>${btn("My clinician cleared the gym lifts — flag them all", { a: "flagall" }, { disabled: !S.clearance.ladder.clearance })}${exFlags}</section>
   <section class="card"><h2>Meal presets</h2><p class="muted small">Estimates — edit to match your brands and portions. Changing a preset doesn't rewrite meals you've already logged.</p>${presets}
     <div class="row" style="margin-top:8px"><label class="small muted" for="newslot">New preset for</label><select id="newslot">${L.SLOTS.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select>${btn("Add preset", { a: "addpreset" })}</div></section>
   <section class="card"><h2>Calorie boosters</h2>${boosters}</section>

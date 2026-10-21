@@ -131,10 +131,11 @@ as its own PWA.
 - **Data** lives only in the browser's localStorage on that device — no
   server involved. Export JSON/CSV and import JSON from Settings; clearing
   site data deletes everything, so back up occasionally. Every change is undoable.
-- **Injury gates**: upper-body exercises stay locked until you record
-  clinician clearance *and* flag each exercise cleared + pain-free. The week
-  number never unlocks anything. Red-flag pain options show a warning; the
-  app never diagnoses.
+- **Training safety**: there are no clinician-clearance gates. Everything is
+  available from day one; a short pre-session check (pain-free range, no pain
+  with light palm-up resistance, no symptoms the day after) advises
+  lower-body-only if anything is a no. Curls and underhand pulling are left
+  out, and red-flag pain options show a warning. The app never diagnoses.
 - **Reminders** fire only while the app is open or backgrounded — a web app
   can't wake itself when closed (that needs server push or a native app).
   They never log anything. "Mark done" actions are deliberately omitted,
@@ -148,7 +149,8 @@ as its own PWA.
   two home days (Tue/Thu: bodyweight + pull-up bar); Saturday can be made a
   third home day from the routine picker. Sets follow a 4-week wave with a
   leg-only density block in week 3. No curls or underhand pulling; pull-ups
-  are a hang → scapular → band-assisted → full ladder, cleared one step at a time.
+  are a hang → scapular → band-assisted → full ladder you step up with the
+  Progress button.
 - Logic is in `public/tracker/logic.js` / `store.js` (pure, tested):
   `npm test`.
 

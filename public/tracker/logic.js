@@ -79,7 +79,7 @@ export const ROUTINE_LABEL = { A: "Gym A", B: "Gym B", H1: "Home 1", H2: "Home 2
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function ex(id, name, sets, reps, extra = {}) {
-  return { id, name, sets, reps, phase: 1, clearanceRequired: false, ...extra };
+  return { id, name, sets, reps, phase: 1, upper: false, ...extra };
 }
 export const WORKOUTS = {
   // Gym days (full gym). Density lifts are chosen to spare the elbow and neck.
@@ -112,43 +112,37 @@ export const WORKOUTS = {
   ],
 };
 export const ALL_EXERCISES = () => [...Object.values(WORKOUTS).flat(), ...UPPER_BODY];
-// Locked until clinician clearance + per-exercise flags (see isExerciseUnlocked).
 // Set/rep numbers are placeholders for a clinician to overwrite, not prescriptions.
-// Full-gym upper-body list. "starter" items (rehab / bodyweight steps) are never
-// flagged by the bulk button; flag them one by one if you want them.
+// Full-gym upper-body list. No curls and no underhand pulling, by design.
 export const UPPER_BODY = [
-  ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 1, clearanceRequired: true, noRamp: true, starter: true }),
-  ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 1, clearanceRequired: true, noRamp: true, starter: true }),
-  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
-  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
-  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
+  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 1, upper: true, days: ["H1", "H2"] }),
+  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 1, upper: true, days: ["H1", "H2"] }),
+  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 1, upper: true, days: ["H1", "H2"] }),
   // Home pull-up-bar ladder. Overhand or neutral grip only: no chin-ups, no slow negatives.
-  ex("h-hang", "Dead hangs (overhand or neutral grip)", 2, "20–30 sec", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true, noRamp: true }),
-  ex("h-scap", "Scapular pull-ups (shoulder blades only, elbows stay straight)", 2, "8–12", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
-  ex("h-assist", "Band-assisted pull-ups (overhand or neutral grip)", 2, "4–8", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
-  ex("h-pullup", "Pull-ups (overhand or neutral grip, no chin-ups)", 2, "3–8", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
+  ex("h-hang", "Dead hangs (overhand or neutral grip)", 2, "20–30 sec", { phase: 1, upper: true, days: ["H1", "H2"], noRamp: true }),
+  ex("h-scap", "Scapular pull-ups (shoulder blades only, elbows stay straight)", 2, "8–12", { phase: 1, upper: true, days: ["H1", "H2"] }),
+  ex("h-assist", "Band-assisted pull-ups (overhand or neutral grip)", 2, "4–8", { phase: 1, upper: true, days: ["H1", "H2"] }),
+  ex("h-pullup", "Pull-ups (overhand or neutral grip, no chin-ups)", 2, "3–8", { phase: 1, upper: true, days: ["H1", "H2"] }),
   // Home push accessories
-  ex("h-close", "Close-grip push-ups (triceps)", 2, "6–12", { phase: 1, clearanceRequired: true, days: ["H1"] }),
-  ex("h-pike", "Pike push-ups (shoulders; stop if neck/traps complain)", 2, "5–10", { phase: 1, clearanceRequired: true, days: ["H2"] }),
+  ex("h-close", "Close-grip push-ups (triceps)", 2, "6–12", { phase: 1, upper: true, days: ["H1"] }),
+  ex("h-pike", "Pike push-ups (shoulders; stop if neck/traps complain)", 2, "5–10", { phase: 1, upper: true, days: ["H2"] }),
   // Workout A (Mon, Fri)
-  ex("u-bench", "Bench press (barbell, or dumbbells with neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["A"] }),
-  ex("u-lat-raise", "Dumbbell lateral raise", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["A"] }),
+  ex("u-bench", "Bench press (barbell, or dumbbells with neutral grip)", 3, "8–12", { phase: 1, upper: true, days: ["A"] }),
+  ex("u-lat-raise", "Dumbbell lateral raise", 2, "12–15", { phase: 1, upper: true, days: ["A"] }),
   // Both days
-  ex("u-row", "Chest-supported row (neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["A", "B"] }),
-  ex("u-tri", "Triceps pushdowns (cable or band)", 2, "10–15", { phase: 1, clearanceRequired: true, days: ["A", "B"] }),
+  ex("u-row", "Chest-supported row (neutral grip)", 3, "8–12", { phase: 1, upper: true, days: ["A", "B"] }),
+  ex("u-tri", "Triceps pushdowns (cable or band)", 2, "10–15", { phase: 1, upper: true, days: ["A", "B"] }),
   // Workout B (Wed)
-  ex("u-incdb", "Incline dumbbell press (neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["B"] }),
-  ex("u-pulldown", "Lat pulldown (neutral grip, never underhand)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["B"] }),
-  ex("u-ohp", "Seated dumbbell shoulder press (neutral grip; stop if neck/traps complain)", 2, "8–10", { phase: 1, clearanceRequired: true, days: ["B"] }),
-  ex("u-fly", "Cable fly or pec-deck (light, soft elbows)", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
-  ex("u-rear", "Rear-delt fly (cable or machine)", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
-  ex("u-tri-oh", "Overhead cable triceps extension", 2, "10–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-incdb", "Incline dumbbell press (neutral grip)", 3, "8–12", { phase: 1, upper: true, days: ["B"] }),
+  ex("u-pulldown", "Lat pulldown (neutral grip, never underhand)", 3, "8–12", { phase: 1, upper: true, days: ["B"] }),
+  ex("u-ohp", "Seated dumbbell shoulder press (neutral grip; stop if neck/traps complain)", 2, "8–10", { phase: 1, upper: true, days: ["B"] }),
+  ex("u-fly", "Cable fly or pec-deck (light, soft elbows)", 2, "12–15", { phase: 1, upper: true, days: ["B"] }),
+  ex("u-rear", "Rear-delt fly (cable or machine)", 2, "12–15", { phase: 1, upper: true, days: ["B"] }),
+  ex("u-tri-oh", "Overhead cable triceps extension", 2, "10–15", { phase: 1, upper: true, days: ["B"] }),
 ];
-// Non-starter lifts, flagged by the bulk button (starters and the pull-up ladder are flagged one by one).
-export const GYM_LIFTS = UPPER_BODY.filter((u) => !u.starter);
 
-// Quick pre-session check before any cleared upper-body work. Advisory: it
-// recommends lower-body only if anything is unticked; it never clears anything.
+// Quick self-check before upper-body work. Advisory: if anything is unticked it
+// recommends lower-body only that day.
 export const READINESS = [
   { id: "rom", label: "Full elbow range today with no pain" },
   { id: "resist", label: "No pain with light palm-up resistance" },
@@ -156,7 +150,7 @@ export const READINESS = [
 ];
 
 // Progression ladders (easier → harder variants of the same movement). The shown
-// variant follows state.progression, but never one that isn't cleared + pain-free.
+// variant follows state.progression (you move up with the Progress button).
 export const LADDERS = { push: ["u-wall-push", "u-incline-push", "u-push"], pull: ["h-hang", "h-scap", "h-assist", "h-pullup"] };
 export const LADDER_OF = Object.fromEntries(Object.entries(LADDERS).flatMap(([k, ids]) => ids.map((id) => [id, k])));
 export const MAX_LOAD_LEVEL = 10;
@@ -164,7 +158,7 @@ export const MAX_LOAD_LEVEL = 10;
 // Session order: 1 warm-up/rehab → 2 main leg lift → 3 main upper push/pull →
 // 4 secondary → 5 accessories. A density lift is moved up to 1.5 (fresh legs).
 const STAGE = {
-  "u-iso": 1, "u-band": 1, "a-heel": 1, "b-march": 1,
+  "a-heel": 1, "b-march": 1,
   "g-squat": 2, "g-split": 2, "a-squat": 2, "b-split": 2,
   "u-wall-push": 3, "u-incline-push": 3, "u-push": 3, "u-bench": 3, "u-incdb": 3, "u-pulldown": 3, "u-ohp": 3,
   "h-hang": 3, "h-scap": 3, "h-assist": 3, "h-pullup": 3,
@@ -176,27 +170,10 @@ const STAGE = {
 export const REST_OPTIONS = [45, 60, 90, 120, 180];
 
 export const PHASES = [
-  { n: 1, name: "Protect", weeks: "1–2", plan: "Three full-body workouts per week: legs plus cleared pushing and pulling (neutral grips, no curls). Effort stays at about 3 reps in reserve", gate: "No symptoms during or the day after training; everyday movement comfortable" },
-  { n: 2, name: "Reintroduce", weeks: "3–4, if cleared", plan: "Same sessions; add load in small steps (about 2 reps in reserve) and the first extra set of upper-body work", gate: "No symptoms during/next day; neck and elbow stay quiet at the new loads" },
-  { n: 3, name: "Build", weeks: "5–8, if tolerated", plan: "Three full-body sessions; gradual incline push-ups, light rows and harder leg work", gate: "Consistent comfortable motion and loading" },
-  { n: 4, name: "Progress", weeks: "9–13, if tolerated", plan: "Three progressive full-body sessions; optional fourth short session; add load/reps gradually", gate: "No recurrence of elbow or neck pain" },
-];
-
-// requiresClearance: steps that load the elbow/upper body. Ladder steps are also
-// sequential — a step can't be ticked before the one above it.
-export const LADDER = [
-  { id: "clearance", label: "Clinician evaluation / clearance documented (tap Yes only after it occurs)", requiresClearance: false },
-  { id: "motion", label: "Gentle pain-free elbow motion tolerated", requiresClearance: false },
-  { id: "iso", label: "Clinician-approved light elbow isometrics tolerated", requiresClearance: true },
-  { id: "resist", label: "Clinician-approved light elbow resistance tolerated", requiresClearance: true },
-  { id: "wall", label: "Wall push-ups tolerated (if appropriate)", requiresClearance: true },
-  { id: "incline", label: "Incline push-ups tolerated", requiresClearance: true },
-  { id: "rows", label: "Light rows tolerated", requiresClearance: true },
-  { id: "normal", label: "Normal resistance training resumed", requiresClearance: true },
-  { id: "golf-putt", label: "Return to golf 1: putting", requiresClearance: true },
-  { id: "golf-chip", label: "Return to golf 2: short chips", requiresClearance: true },
-  { id: "golf-partial", label: "Return to golf 3: partial swings", requiresClearance: true },
-  { id: "golf-full", label: "Return to golf 4: full swings (only if tolerated and cleared)", requiresClearance: true },
+  { n: 1, name: "Protect", weeks: "1–2", plan: "Three full-body workouts per week: legs plus pushing and pulling (neutral grips, no curls). Effort stays at about 3 reps in reserve", gate: "No symptoms during or the day after training; everyday movement comfortable" },
+  { n: 2, name: "Reintroduce", weeks: "3–4", plan: "Same sessions; add load in small steps (about 2 reps in reserve) and the first extra set of upper-body work", gate: "No symptoms during/next day; neck and elbow stay quiet at the new loads" },
+  { n: 3, name: "Build", weeks: "5–8", plan: "Three full-body sessions; gradual incline push-ups, light rows and harder leg work", gate: "Consistent comfortable motion and loading" },
+  { n: 4, name: "Progress", weeks: "9–13", plan: "Three progressive full-body sessions; optional fourth short session; add load/reps gradually", gate: "No recurrence of elbow or neck pain" },
 ];
 
 export const SLEEP_BANDS = [
@@ -263,7 +240,7 @@ export const MEAL_PREP = ["Cook batch protein", "Cook rice / pasta", "Portion lu
   "Prepare shake ingredients", "Check groceries for next 3–4 days"];
 
 export const REVIEW_CALORIE_OPTIONS = ["Keep", "+150", "+200", "-100", "-200"];
-export const REVIEW_TRAINING_OPTIONS = ["Maintain", "Progress if cleared", "Deload", "Seek evaluation"];
+export const REVIEW_TRAINING_OPTIONS = ["Maintain", "Progress", "Deload", "Seek evaluation"];
 
 // Illustrative only — start 159, week 13 ~174. Never framed as pass/fail.
 export const MILESTONES = [[0, 159], [2, 161], [4, 163.5], [6, 165.5], [8, 168], [10, 170.5], [13, 174]];
@@ -337,10 +314,6 @@ export function routineForDate(state, date) {
 }
 export const isLoadedRoutine = (r) => r === "A" || r === "B" || r === "H1" || r === "H2";
 
-export function isExerciseUnlocked(state, id) {
-  const ex = state.clearance.exercises[id];
-  return !!(state.clearance.ladder.clearance && ex?.cleared && ex?.painFree);
-}
 // Four-week wave borrowed from the strength plan: add sets for three weeks,
 // then deload back to the base. Upper body ramps more gently than legs. The wave
 // follows the calendar from the start date, so it is only a set-count suggestion
@@ -365,31 +338,27 @@ export const isDensityWeek = (state, date) => waveInfo(state, date).weekInBlock 
 export function setsFor(state, date, e) {
   if (e.noRamp) return e.sets;
   if (e.density && isDensityWeek(state, date)) return DENSITY_SETS;
-  const wave = e.clearanceRequired ? WAVE_UPPER : WAVE_LOWER;
+  const wave = e.upper ? WAVE_UPPER : WAVE_LOWER;
   return e.sets + wave[waveInfo(state, date).weekInBlock];
 }
-export const progressLevel = (state, key) => state.progression?.[key]?.level ?? 0;
-// Which ladder variant to show: the one at the current level if cleared, else the
-// nearest cleared one at/above it, else the highest cleared below it.
+// Push ladder starts at standard push-ups (you bench anyway); pull ladder starts at
+// dead hangs because pull-ups are the loaded elbow-flexor movement.
+export const LADDER_DEFAULT = { push: 2, pull: 0 };
+export const progressLevel = (state, key) => state.progression?.[key]?.level ?? LADDER_DEFAULT[key] ?? 0;
 export function shownLadderVariant(state, key) {
-  const ids = LADDERS[key], lvl = progressLevel(state, key);
-  const open = ids.map((id, i) => ({ id, i })).filter((v) => isExerciseUnlocked(state, v.id));
-  if (!open.length) return null;
-  return (open.find((v) => v.i >= lvl) || open[open.length - 1]);
+  const ids = LADDERS[key], i = Math.min(progressLevel(state, key), ids.length - 1);
+  return { id: ids[i], i };
 }
 export function canProgress(state, key) {
-  if (LADDERS[key]) {
-    const cur = shownLadderVariant(state, key);
-    return !!cur && cur.i + 1 < LADDERS[key].length && isExerciseUnlocked(state, LADDERS[key][cur.i + 1]);
-  }
+  if (LADDERS[key]) return shownLadderVariant(state, key).i + 1 < LADDERS[key].length;
   return progressLevel(state, key) < MAX_LOAD_LEVEL;
 }
 export function exercisesForDate(state, date) {
   const r = routineForDate(state, date);
   if (!isLoadedRoutine(r)) return [];
   const base = WORKOUTS[r];
-  const shown = new Set(Object.keys(LADDERS).map((k) => shownLadderVariant(state, k)?.id).filter(Boolean));
-  const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id) && (!u.days || u.days.includes(r)) && (!LADDER_OF[u.id] || shown.has(u.id)));
+  const shown = new Set(Object.keys(LADDERS).map((k) => shownLadderVariant(state, k).id));
+  const upper = UPPER_BODY.filter((u) => (!u.days || u.days.includes(r)) && (!LADDER_OF[u.id] || shown.has(u.id)));
   const dense = isDensityWeek(state, date);
   return [...base, ...upper]
     .map((e) => {
@@ -443,13 +412,6 @@ export function phaseForDate(state, date) {
   return { week, phase: PHASES[n - 1] };
 }
 
-export function ladderStepAvailable(state, idx) {
-  const step = LADDER[idx];
-  if (idx === 0) return true;
-  if (!state.clearance.ladder[LADDER[idx - 1].id]) return false; // sequential
-  if (step.requiresClearance && !state.clearance.ladder.clearance) return false;
-  return true;
-}
 
 // ---------- Weight ----------
 

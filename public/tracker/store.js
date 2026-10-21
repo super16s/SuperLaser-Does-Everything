@@ -4,7 +4,7 @@
 
 import {
   DEFAULT_PRESETS, DEFAULT_BOOSTERS, defaultReminders, REMINDER_CATEGORIES, YOGA_STAGES,
-  ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN, LADDER, ladderStepAvailable,
+  ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN,
   LEGACY_PRESETS, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
 } from "./logic.js";
 
@@ -21,7 +21,6 @@ export function defaultState(now = new Date()) {
     reminders: defaultReminders(),
     reminderCategories: Object.fromEntries(REMINDER_CATEGORIES.map((c) => [c.id, true])),
     reminderState: { fired: {}, skipped: {}, snoozedUntil: {} },
-    clearance: { ladder: {}, exercises: {} },
     progression: {}, // key → { level, changedAt, history }
     days: {},
     pain: [],
@@ -34,8 +33,8 @@ function normalize(s) {
   const d = defaultState();
   const migrateNutrition = s.nutritionVersion !== 3;
   const out = { ...d, ...s, nutritionVersion: 3 };
-  for (const k of ["profile", "reminderCategories", "reminderState", "clearance"]) out[k] = { ...d[k], ...(s[k] || {}) };
-  out.clearance.ladder ||= {}; out.clearance.exercises ||= {};
+  for (const k of ["profile", "reminderCategories", "reminderState"]) out[k] = { ...d[k], ...(s[k] || {}) };
+  delete out.clearance; // legacy: clinician-clearance gates were removed
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};
   for (const k of ["days", "weeklyReviews", "lists", "progression"]) out[k] ||= {};
   for (const k of ["mealPresets", "boosters", "reminders", "pain"]) if (!Array.isArray(out[k])) out[k] = d[k];
@@ -224,26 +223,6 @@ export const actions = {
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
-  // Clinician gates. Un-ticking clearance cascades: nothing stays unlocked on a revoked gate.
-  setLadder(s, id, value) {
-    const idx = LADDER.findIndex((l) => l.id === id);
-    if (value && !ladderStepAvailable(s, idx)) return;
-    if (value) s.clearance.ladder[id] = stamp(); else {
-      for (let i = idx; i < LADDER.length; i++) delete s.clearance.ladder[LADDER[i].id]; // later steps depend on earlier ones
-      if (id === "clearance") for (const e of Object.values(s.clearance.exercises)) { e.cleared = false; e.painFree = false; }
-    }
-  },
-  setExerciseFlag(s, exId, flag, value) {
-    if (!s.clearance.ladder.clearance) return; // flags can't be set before documented clearance
-    const e = (s.clearance.exercises[exId] ||= { cleared: false, painFree: false });
-    e[flag] = !!value;
-  },
-
-  // One-tap "my clinician cleared all of these" — still requires the documented-clearance step.
-  flagAllExercises(s, exIds) {
-    if (!s.clearance.ladder.clearance) return;
-    for (const id of exIds) s.clearance.exercises[id] = { cleared: true, painFree: true };
-  },
   setReadiness(s, date, id) {
     const d = day(s, date);
     d.readiness ||= {};
@@ -252,7 +231,7 @@ export const actions = {
     prune(s, date);
   },
 
-  // dir +1 / -1. Moving up a ladder needs the next variant to be cleared + pain-free.
+  // dir +1 / -1. Ladders stop at their last step; load levels stop at MAX_LOAD_LEVEL.
   progress(s, key, dir) {
     const cur = L_progressLevel(s, key);
     let next;
