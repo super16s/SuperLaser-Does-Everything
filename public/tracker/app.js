@@ -245,6 +245,19 @@ const handlers = {
   gmode(d) { ui.guided = d.v === "1"; saveUi(); render(); },
   gskip() { const n = L.nextSet(S(), ui.date); if (n) act((s) => A.setSet(s, ui.date, n.e.id, n.i, "skipped"), "Set skipped"); },
   gback() { const l = L.lastLoggedSet(S(), ui.date); if (l) act((s) => A.setSet(s, ui.date, l.e.id, l.i, null), "Back one set"); },
+  async wshare() {
+    const x = L.workoutExport(S(), ui.date);
+    if (!x.hasData) return toast("Nothing logged for this day yet.", false);
+    if (navigator.share) { try { await navigator.share({ title: `Workout ${ui.date}`, text: x.text }); return; } catch (e) { if (e?.name === "AbortError") return; } }
+    handlers.wcopy();
+  },
+  async wcopy() {
+    const x = L.workoutExport(S(), ui.date);
+    if (!x.hasData) return toast("Nothing logged for this day yet.", false);
+    try { await navigator.clipboard.writeText(x.text); toast("Workout copied", false); } catch { download(`workout-${ui.date}.txt`, x.text, "text/plain"); toast("Couldn't copy, downloaded instead", false); }
+  },
+  wtxt() { const x = L.workoutExport(S(), ui.date); x.hasData ? download(`workout-${ui.date}.txt`, x.text, "text/plain") : toast("Nothing logged for this day yet.", false); },
+  wcsv() { const x = L.workoutExport(S(), ui.date); x.hasData ? download(`workout-${ui.date}.csv`, x.csv, "text/csv") : toast("Nothing logged for this day yet.", false); },
   restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
   restcancel() { ui.rest = null; render(); },
   provoked() { ui.painTod = "after"; ui.rest = null; toast("Stop the workout. Log how it feels below.", false); goTab("recovery"); },

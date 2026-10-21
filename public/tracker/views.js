@@ -177,6 +177,9 @@ export function workout(S, ui) {
     }).join("")}
     <div class="alert">Stop if neck or elbow symptoms are provoked. Keep arms relaxed, neck neutral, and don't support weight on the injured arm.
       <div style="margin-top:8px">${btn("Symptoms provoked — stop & check in", { a: "provoked" }, { cls: "danger" })}</div></div>
+    <section class="card"><h2>Export today's workout</h2>
+      <p class="muted small">Save or send a summary of today's sets and loads: to Notes, Files, a spreadsheet, or a message.</p>
+      <div class="row">${btn("Share / save…", { a: "wshare" }, { cls: "primary" })}${btn("Copy text", { a: "wcopy" })}${btn("Download .txt", { a: "wtxt" })}${btn("Download .csv", { a: "wcsv" })}</div></section>
     <div class="row">${btn(skipped ? "Workout skipped (tap to undo)" : "Skip today's workout", { a: "skipworkout" }, { on: !!skipped })}</div>`;
   }
   return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${L.ROUTINE_LABEL[ov]}</em>` : ""}</h2>${picker}

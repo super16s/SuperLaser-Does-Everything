@@ -598,3 +598,39 @@ export function lastLoggedSet(state, date) {
   for (const e of exs) for (let i = 0; i < e.sets; i++) if (sets[setKey(e.id, i)]) last = { e, i };
   return last;
 }
+
+// ---------- Workout export ----------
+
+const STATUS_WORD = { done: "done", partial: "partial", skipped: "skipped" };
+// Plain-text + CSV summary of one day's workout, for sharing or saving elsewhere.
+export function workoutExport(state, date) {
+  const routine = routineForDate(state, date);
+  const day = getDay(state, date);
+  const exs = exercisesForDate(state, date);
+  const prog = workoutProgress(state, date);
+  const { week, phase } = phaseForDate(state, date);
+  const label = scheduleLabel(state, date);
+  const when = parseYmd(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const lines = [`${label} — ${when}`];
+  if (isLoadedRoutine(routine)) {
+    lines.push(`Week ${waveInfo(state, date).weekInBlock + 1} of 4 wave · program week ${Math.max(week, 1)} (${phase.name})`);
+    lines.push(`Sets done: ${prog.done}/${prog.total}${prog.total ? ` (${Math.round((100 * prog.done) / prog.total)}%)` : ""}${day.workout?.skipped ? " · workout skipped" : ""}`);
+  } else lines.push("No loaded workout scheduled.");
+  const rows = [];
+  for (const e of exs) {
+    const load = day.loads?.[e.id]?.lb;
+    const marks = Array.from({ length: e.sets }, (_, i) => {
+      const st = day.sets?.[setKey(e.id, i)];
+      rows.push([date, routine, e.id, e.name, i + 1, st ? STATUS_WORD[st.status] || st.status : "not logged", load ?? "", st?.loggedAt ?? ""]);
+      return `${i + 1}:${st ? STATUS_WORD[st.status] || st.status : "—"}`;
+    });
+    lines.push("", `${e.name} — ${e.sets} × ${e.reps}${load != null ? ` @ ${load} lb` : ""}${e.isDensity ? " (density block)" : ""}`, `  Sets ${marks.join("  ")}`);
+  }
+  const rd = day.readiness ? READINESS.filter((r) => day.readiness[r.id]).map((r) => r.label) : [];
+  if (rd.length) lines.push("", `Pre-session check ticked: ${rd.join("; ")}`);
+  const pain = painRows(state, date).filter((r) => !r.skipped && typeof r.severity === "number");
+  if (pain.length) lines.push("", "Symptoms: " + pain.map((r) => `${PAIN.areas.find((a) => a.id === r.area)?.label} ${r.severity}/10 (${PAIN.times.find((t) => t.id === r.tod)?.label.toLowerCase()})`).join(", "));
+  const q = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const csv = [["date", "routine", "exercise_id", "exercise", "set", "status", "load_lb", "logged_at"].join(","), ...rows.map((r) => r.map(q).join(","))].join("\n");
+  return { text: lines.join("\n"), csv, hasData: prog.logged > 0 || exs.some((e) => day.loads?.[e.id]) };
+}

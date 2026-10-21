@@ -392,3 +392,23 @@ test("guided flow: next set walks the session in order; skip/partial count as lo
   for (let i = 0; i < exs[0].sets; i++) run(st2, (s) => A.setSet(s, MON, exs[0].id, i, "done"));
   assert.deepEqual([L.nextSet(st2.state, MON).e.id, L.nextSet(st2.state, MON).i], [exs[1].id, 0]);
 });
+
+test("workout export: text and CSV reflect sets, loads and status; empty day reports no data", () => {
+  const st = fresh();
+  assert.equal(L.workoutExport(st.state, MON).hasData, false);
+  const exs = L.exercisesForDate(st.state, MON);
+  run(st, (s) => { A.setSet(s, MON, exs[0].id, 0, "done"); A.setSet(s, MON, exs[0].id, 1, "skipped"); A.setLoad(s, MON, exs[0].id, 135); A.painSet(s, MON, "after", ["elbow"], { severity: 2 }); });
+  const x = L.workoutExport(st.state, MON);
+  assert.equal(x.hasData, true);
+  assert.match(x.text, /Gym: Workout A/);
+  assert.match(x.text, /@ 135 lb/);
+  assert.match(x.text, /1:done {2}2:skipped {2}3:—/);
+  assert.match(x.text, /Right elbow\/forearm 2\/10 \(after activity\)/);
+  assert.match(x.text, /Sets done: 1\/\d+/);
+  const lines = x.csv.split("\n");
+  assert.equal(lines[0], "date,routine,exercise_id,exercise,set,status,load_lb,logged_at");
+  assert.equal(lines.length - 1, exs.reduce((n, e) => n + e.sets, 0));
+  assert.match(lines[1], /^2026-10-19,A,g-squat,.*,1,done,135,/);
+  assert.match(lines[2], /,2,skipped,135,/);
+  assert.equal(L.workoutExport(st.state, SUN).text.includes("No loaded workout scheduled."), true);
+});

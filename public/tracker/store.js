@@ -50,7 +50,10 @@ function normalize(s) {
   return out;
 }
 
-export function createStore(storage = globalThis.localStorage) {
+// Reading localStorage itself can throw (sandboxed frames, blocked site data); fall back to memory-only.
+const safeLocalStorage = () => { try { return globalThis.localStorage; } catch { return null; } };
+
+export function createStore(storage = safeLocalStorage()) {
   let state;
   let undoStack = [];
   const listeners = new Set();
