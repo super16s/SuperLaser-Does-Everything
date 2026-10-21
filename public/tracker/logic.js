@@ -79,6 +79,7 @@ export const WORKOUTS = {
   B: [
     ex("b-split", "Split squats", 3, "8–12 per leg"),
     ex("b-chair", "Slow chair squats", 3, "12", { density: true }),
+    ex("b-sissy", "Sissy squats (assisted, partial range)", 2, "6–10", { cue: "Hold a post lightly with your LEFT hand only; keep the right arm relaxed and your neck neutral. Start shallow, lean back, knees travel forward. Stop if the front of the knee hurts." }),
     ex("b-sl-bridge", "Single-leg glute bridges", 3, "8 per leg"),
     ex("b-wall", "Wall sit", 3, "30–45 sec"),
     ex("b-march", "Supine marching", 2, "12", { noRamp: true }),

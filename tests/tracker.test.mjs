@@ -263,3 +263,12 @@ test("workout B density lift is chair squats in week 3", () => {
   assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-chair").sets, 8);
   assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-split").sets, 5);
 });
+
+test("sissy squats are in workout B only, ramp gently, and aren't a density lift", () => {
+  const st = fresh();
+  const at = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "b-sissy");
+  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "b-sissy"), undefined);
+  const wed = (n) => L.addDays(WED, 7 * n);
+  assert.deepEqual([0, 1, 2, 3].map((n) => at(wed(n)).sets), [2, 3, 4, 2]);
+  assert.equal(at(wed(2)).isDensity, false);
+});
