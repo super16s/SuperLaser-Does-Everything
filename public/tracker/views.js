@@ -147,7 +147,7 @@ export function workout(S, ui) {
     <section class="card locked"><h2>🔒 Upper-body exercises (locked)</h2>
       <p class="muted small">These unlock only after you record clinician clearance <em>and</em> flag each exercise as cleared and pain-free in Settings → Injury clearance. The calendar never unlocks them. Until then, keep training legs.</p>
       <ul class="checklist">${locked.map((u) => `<li><span class="glyph" aria-hidden="true">🔒</span><span>${esc(u.name)} <span class="muted small">— ${S.clearance.ladder.clearance ? "needs cleared + pain-free flags" : "needs documented clearance"}</span></span></li>`).join("")}</ul>
-      <p class="small"><strong>Avoid for now:</strong> curls, chin-ups, heavy rows, heavy carrying, forceful palm-up twisting, painful golf swings, shoulder-loaded yoga.</p></section>
+      <p class="small"><strong>Avoid:</strong> bicep curls, chin-ups and other underhand pulling, forceful palm-up twisting, painful golf swings, shoulder-loaded yoga. Build rows and pulldowns gradually with a neutral grip.</p></section>
     <details class="card"><summary><strong>90-day phases</strong></summary><table class="plain"><thead><tr><th>Phase</th><th>Plan</th><th>Advance only when…</th></tr></thead><tbody>
       ${L.PHASES.map((p) => `<tr><td><strong>${p.n} ${p.name}</strong><br><span class="muted">Wk ${p.weeks}</span></td><td>${p.plan}</td><td>${p.gate}</td></tr>`).join("")}</tbody></table>
       <p class="muted small">Weeks are a guide, not a gate. Nothing auto-unlocks on a week number.</p></details>`;

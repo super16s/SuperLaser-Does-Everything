@@ -226,7 +226,7 @@ test("bulk flag needs documented clearance, then unlocks every upper-body exerci
   run(st, (s) => A.setLadder(s, "clearance", true));
   run(st, (s) => A.flagAllExercises(s, ids));
   assert.ok(ids.every((id) => L.isExerciseUnlocked(st.state, id)));
-  assert.ok(L.exercisesForDate(st.state, MON).some((e) => e.id === "u-curl"));
+  assert.ok(L.exercisesForDate(st.state, MON).some((e) => e.id === "u-press"));
 });
 
 test("readiness ticks are per-day and toggle", () => {
@@ -271,4 +271,15 @@ test("sissy squats are in workout B only, ramp gently, and aren't a density lift
   const wed = (n) => L.addDays(WED, 7 * n);
   assert.deepEqual([0, 1, 2, 3].map((n) => at(wed(n)).sets), [2, 3, 4, 2]);
   assert.equal(at(wed(2)).isDensity, false);
+});
+
+test("no curls anywhere; upper work is split across A and B; triceps and rows on both", () => {
+  const st = fresh();
+  assert.ok(!L.UPPER_BODY.some((u) => /curl/i.test(u.name)));
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
+  const ids = (d) => L.exercisesForDate(st.state, d).filter((e) => e.clearanceRequired).map((e) => e.id);
+  assert.ok(ids(MON).includes("u-press") && !ids(MON).includes("u-ohp") && !ids(MON).includes("u-pulldown"));
+  assert.ok(ids(WED).includes("u-ohp") && ids(WED).includes("u-pulldown") && !ids(WED).includes("u-press"));
+  for (const d of [MON, WED]) assert.ok(ids(d).includes("u-tri") && ids(d).includes("u-row"));
 });

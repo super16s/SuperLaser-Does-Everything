@@ -90,11 +90,14 @@ export const WORKOUTS = {
 export const UPPER_BODY = [
   ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
   ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
-  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 2, clearanceRequired: true }),
-  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 3, clearanceRequired: true }),
-  ex("u-row", "Light rows", 2, "8–12", { phase: 3, clearanceRequired: true }),
-  ex("u-curl", "Light curls (start very light)", 2, "8–10", { phase: 3, clearanceRequired: true }),
-  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 4, clearanceRequired: true }),
+  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 2, clearanceRequired: true, days: ["A"] }),
+  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 3, clearanceRequired: true, days: ["A"] }),
+  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 4, clearanceRequired: true, days: ["A"] }),
+  ex("u-press", "Dumbbell floor press (neutral grip)", 2, "8–12", { phase: 3, clearanceRequired: true, days: ["A"] }),
+  ex("u-tri", "Triceps pushdowns (cable or band)", 2, "10–15", { phase: 3, clearanceRequired: true }),
+  ex("u-row", "Light rows (neutral grip, chest-supported if possible)", 2, "8–12", { phase: 3, clearanceRequired: true }),
+  ex("u-pulldown", "Lat pulldown (neutral grip, never underhand)", 2, "8–12", { phase: 3, clearanceRequired: true, days: ["B"] }),
+  ex("u-ohp", "Light overhead press (neutral grip, stop if neck/traps complain)", 2, "8–10", { phase: 4, clearanceRequired: true, days: ["B"] }),
 ];
 
 // Quick pre-session check before any cleared upper-body work. Advisory: it
@@ -302,7 +305,7 @@ export function exercisesForDate(state, date) {
   const r = routineForDate(state, date);
   if (!isLoadedRoutine(r)) return [];
   const base = WORKOUTS[r];
-  const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id));
+  const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id) && (!u.days || u.days.includes(r)));
   const dense = isDensityWeek(state, date);
   return [...base, ...upper].map((e) => ({ ...e, sets: setsFor(state, date, e), isDensity: !!(e.density && dense) }));
 }
