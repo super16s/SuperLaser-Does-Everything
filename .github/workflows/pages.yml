@@ -1,0 +1,58 @@
+name: Deploy tracker to GitHub Pages
+
+# Publishes the Gain Tracker (public/tracker + public/icons) as a static site so it
+# can be opened on a phone over HTTPS and added to the home screen. It deploys only
+# from the repository's default branch, after the tests pass. No user data is
+# involved: the app keeps its logs in the browser on each device.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
+
+  deploy:
+    if: github.ref_name == github.event.repository.default_branch
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Keep tracker/ and icons/ side by side: the app references ../icons/.
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp -r public/tracker site/tracker
+          cp -r public/icons site/icons
+          touch site/.nojekyll
+          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=tracker/"><title>Gain Tracker</title><a href="tracker/">Open the Gain Tracker</a>\n' > site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
