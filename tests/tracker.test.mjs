@@ -242,7 +242,10 @@ test("set wave: +0/+1/+2 then deload, upper gentler, rehab items fixed", () => {
   const st = fresh();
   const squat = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "a-squat").sets;
   const wk = (n) => L.addDays(MON, 7 * n);
-  assert.deepEqual([0, 1, 2, 3, 4].map((n) => squat(wk(n))), [3, 4, 5, 3, 3]);
+  assert.deepEqual([0, 1, 2, 3, 4].map((n) => squat(wk(n))), [3, 4, 8, 3, 3]);
+  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "a-lunge").sets, 5); // only the density lift jumps
+  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "a-squat").isDensity, true);
+  assert.equal(L.exercisesForDate(st.state, wk(1)).find((e) => e.id === "a-squat").isDensity, false);
   assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "a-heel").sets, 2);
   assert.equal(L.waveInfo(st.state, wk(3)).deload, true);
   assert.equal(L.waveInfo(st.state, wk(4)).reps, "10–12");
@@ -251,4 +254,12 @@ test("set wave: +0/+1/+2 then deload, upper gentler, rehab items fixed", () => {
   const row = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "u-row").sets;
   assert.deepEqual([0, 1, 2, 3].map((n) => row(wk(n))), [2, 3, 3, 2]);
   assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "u-iso").sets, 2);
+  assert.ok(L.exercisesForDate(st.state, wk(2)).filter((e) => e.clearanceRequired).every((e) => !e.isDensity && e.sets <= L.UPPER_BODY.find((u) => u.id === e.id).sets + 1)); // upper body never density
+});
+
+test("workout B density lift is chair squats in week 3", () => {
+  const st = fresh();
+  const wed = L.addDays(WED, 14);
+  assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-chair").sets, 8);
+  assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-split").sets, 5);
 });

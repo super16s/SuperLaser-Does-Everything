@@ -127,9 +127,9 @@ export function workout(S, ui) {
       <p class="small" style="margin:8px 0 0">${rdOk ? "All clear for today. Add load or reps gradually; stop if symptoms appear." : "If any of these is a no, do the lower-body sets only today and skip the upper-body ones."}</p></div>` : "";
     const w = L.waveInfo(S, date);
     const wave = `<div class="alert info"><strong>Week ${w.weekInBlock + 1} of 4${w.deload ? " — deload" : ""}</strong> · stop each set with ${w.rir}. Never to failure.
-      <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.</div></div>`;
+      <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.${L.isDensityWeek(S, date) ? " <strong>Density week:</strong> the marked leg lift is 8 sets with short rests. Keep it to about 2 reps in reserve, use a load where the last sets are hard but clean, and stop early if form or neck/elbow comfort slips." : ""}</div></div>`;
     body = `${wave}${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
-    ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>
+    ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
         return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;

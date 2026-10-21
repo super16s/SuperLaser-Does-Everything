@@ -70,7 +70,7 @@ function ex(id, name, sets, reps, extra = {}) {
 }
 export const WORKOUTS = {
   A: [
-    ex("a-squat", "Slow bodyweight squats", 3, "12–20"),
+    ex("a-squat", "Slow bodyweight squats", 3, "12–20", { density: true }),
     ex("a-lunge", "Reverse lunges", 3, "8–12 per leg"),
     ex("a-bridge", "Glute bridges", 3, "15–20"),
     ex("a-calf", "Calf raises", 3, "20"),
@@ -78,7 +78,7 @@ export const WORKOUTS = {
   ],
   B: [
     ex("b-split", "Split squats", 3, "8–12 per leg"),
-    ex("b-chair", "Slow chair squats", 3, "12"),
+    ex("b-chair", "Slow chair squats", 3, "12", { density: true }),
     ex("b-sl-bridge", "Single-leg glute bridges", 3, "8 per leg"),
     ex("b-wall", "Wall sit", 3, "30–45 sec"),
     ex("b-march", "Supine marching", 2, "12", { noRamp: true }),
@@ -287,8 +287,13 @@ export function waveInfo(state, date) {
     rir: deload ? "3+ reps in reserve (deload: same weights, fewer sets)" : weekInBlock === 0 ? "about 3 reps in reserve" : "about 2 reps in reserve",
   };
 }
+// Week 3 of each block: one lower-body lift per workout becomes a density block
+// (8 sets, short rest) borrowed from Gironda-style 8x8. Legs only; never upper body.
+export const DENSITY_SETS = 8;
+export const isDensityWeek = (state, date) => waveInfo(state, date).weekInBlock === 2;
 export function setsFor(state, date, e) {
   if (e.noRamp) return e.sets;
+  if (e.density && isDensityWeek(state, date)) return DENSITY_SETS;
   const wave = e.clearanceRequired ? WAVE_UPPER : WAVE_LOWER;
   return e.sets + wave[waveInfo(state, date).weekInBlock];
 }
@@ -297,7 +302,8 @@ export function exercisesForDate(state, date) {
   if (!isLoadedRoutine(r)) return [];
   const base = WORKOUTS[r];
   const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id));
-  return [...base, ...upper].map((e) => ({ ...e, sets: setsFor(state, date, e) }));
+  const dense = isDensityWeek(state, date);
+  return [...base, ...upper].map((e) => ({ ...e, sets: setsFor(state, date, e), isDensity: !!(e.density && dense) }));
 }
 export function setKey(exId, i) { return `${exId}#${i}`; }
 export function workoutProgress(state, date) {
