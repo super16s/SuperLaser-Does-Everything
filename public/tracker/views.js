@@ -34,7 +34,7 @@ export function header(S, ui, canUndo) {
   const { week, phase } = L.phaseForDate(S, ui.date);
   return `<div class="row between"><h1>Gain Tracker</h1>
     ${btn("↶ Undo", { a: "undo" }, { disabled: !canUndo, aria: "Undo last change" })}</div>
-  <div class="row" style="margin-top:6px">
+  <div class="datebar">
     ${btn("◀", { a: "day", v: -1 }, { aria: "Previous day" })}
     <input type="date" value="${ui.date}" data-c="date" aria-label="Choose date" />
     ${btn("▶", { a: "day", v: 1 }, { aria: "Next day" })}
@@ -55,7 +55,7 @@ function mealCard(S, ui, slot) {
   const chips = L.PORTIONS.map((o) => btn(o.label, { a: "meal", slot: slot.id, v: o.value }, { on: cur === o.value })).join("");
   const logged = log ? (log.multiplier > 0 ? `Logged: ${nf(log.calories * log.multiplier)} kcal · ${nf(log.protein * log.multiplier)} g protein` : "Logged: skipped (0 kcal)") : "Not logged";
   return `<section class="card" id="meal-${slot.id}" data-cele="${MEAL_KIND[slot.id]}" data-done="${log && log.multiplier > 0 ? 1 : 0}" aria-label="${esc(slot.label)}">
-    <div class="row between"><strong>${esc(p.label).toUpperCase()} · ${nf(p.calories)} kcal · ${nf(p.protein)}g protein</strong></div>
+    <div class="mealhead"><strong>${esc(p.label)}</strong><span class="muted">${nf(p.calories)} kcal · ${nf(p.protein)} g protein</span></div>
     <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
     ${alts.length > 1 ? `<label class="field">Swap meal <select data-c="swap" data-slot="${slot.id}">${alts.map((a) => `<option value="${esc(a.id)}"${a.id === p.id ? " selected" : ""}>${esc(a.label)} (${nf(a.calories)} kcal)</option>`).join("")}</select></label>` : ""}
@@ -105,12 +105,13 @@ export function today(S, ui) {
   const wPresets = [-2, -1, 0, 1, 2].map((d) => { const v = Math.round((last + d) * 10) / 10; return btn(`${v.toFixed(1)}`, { a: "wset", v }, { on: base === v, aria: `Set ${v.toFixed(1)} pounds` }); }).join("");
   const boosters = S.boosters.map((b) => btn(`+${b.calories} kcal`, { a: "booster", id: b.id }, { disabled: !b.foods.trim(), aria: b.foods.trim() ? `Add ${b.calories} kcal: ${b.foods}` : `${b.calories} kcal booster, no foods assigned. Assign in Settings.` })).join("");
   const meal = (id) => mealCard(S, ui, L.SLOTS.find((x) => x.id === id));
-  const weightCard = `<section class="card" id="weight" data-cele="scale" data-done="${w ? 1 : 0}" aria-label="Weight"><h2>Morning weight</h2>
-      <div class="row between"><span class="big">${base.toFixed(1)} lb</span><span class="muted">${w ? `Logged ${w.lb.toFixed(1)} lb` : "Not logged"}</span></div>
-      <div class="row" style="margin:8px 0">${btn("−0.5", { a: "wstep", v: -0.5 }, { aria: "Minus half a pound" })}${btn("+0.5", { a: "wstep", v: 0.5 }, { aria: "Plus half a pound" })}
-        <div class="chips" role="group" aria-label="Preset weights near last reading" style="flex:1">${wPresets}</div></div>
-      <div class="row">${btn(w && w.lb === base ? "Logged ✓" : "Log weight", { a: "wlog" }, { cls: "primary" })}${w ? btn("Clear", { a: "wclear" }) : ""}</div></section>`;
-  const sleepCard = `<section class="card" id="sleep" data-cele="moon" data-done="${day.sleepBand ? 1 : 0}"><h2>Sleep last night</h2><div class="chips" role="group" aria-label="Sleep duration">
+  const weightCard = `<section class="card" id="weight" data-cele="scale" data-done="${w ? 1 : 0}" aria-label="Weight"><h2 class="center">Morning weight</h2>
+      <div class="bignum" aria-live="polite">${base.toFixed(1)}<small> lb</small>${w && w.lb === base ? '<span class="tick" aria-label="logged"> ✓</span>' : ""}</div>
+      <div class="muted small center">${w ? `Logged ${w.lb.toFixed(1)} lb` : "Not logged yet"}</div>
+      <div class="grid-btns tight" style="--n:5;margin-top:10px" role="group" aria-label="Preset weights near last reading">${wPresets}</div>
+      <div class="grid-btns" style="--n:2;margin-top:8px">${btn("−0.5", { a: "wstep", v: -0.5 }, { aria: "Minus half a pound" })}${btn("+0.5", { a: "wstep", v: 0.5 }, { aria: "Plus half a pound" })}</div>
+      ${btn(w && w.lb === base ? "Weight logged ✓" : "Log weight", { a: "wlog" }, { cls: "primary block" })}${w ? `<div class="center">${btn("Clear weight", { a: "wclear" }, { cls: "link" })}</div>` : ""}</section>`;
+  const sleepCard = `<section class="card" id="sleep" data-cele="moon" data-done="${day.sleepBand ? 1 : 0}"><h2>Sleep last night</h2><div class="chips nowrap" role="group" aria-label="Sleep duration">
       ${L.SLEEP_BANDS.map((b) => btn(b.label, { a: "sleep", v: b.id }, { on: day.sleepBand === b.id })).join("")}</div>
       <p class="muted small">Target 7–9 h.${day.sleepBand ? (L.SLEEP_ON_TARGET.includes(day.sleepBand) ? " On target." : " Outside the 7–9 h target.") : ""}</p></section>`;
   const totalsCard = `<section class="card" aria-label="Daily totals"><h2>Today's totals</h2><div class="stack" aria-live="polite">
@@ -139,7 +140,7 @@ function lists(S, ui) {
 function walkCard(S, ui, routine) {
   const w = L.walkMinutes(S, ui.date);
   const note = routine === "walk" ? "A 40-minute walk completes the day. 30 min is 75%, 20 min is 50%." : "The walk is the last quarter of a home workout. 40 min earns all of it, 30 min 75%, 20 min 50%.";
-  return `<section class="card"><h2>Walk</h2><div class="chips" role="group" aria-label="Walk minutes">${L.WALK_MINUTES.map((m) => btn(`${m} min`, { a: "walk", v: m }, { on: w === m })).join("")}</div><p class="muted small" style="margin:8px 0 0">${note}</p></section>`;
+  return `<section class="card"><h2>Walk</h2><div class="chips nowrap" role="group" aria-label="Walk minutes">${L.WALK_MINUTES.map((m) => btn(`${m} min`, { a: "walk", v: m }, { on: w === m })).join("")}</div><p class="muted small" style="margin:8px 0 0">${note}</p></section>`;
 }
 
 function heroHtml(S, ui, label, countText, dp) {
@@ -154,16 +155,16 @@ function guided(S, ui, exs) {
   const date = ui.date, day = L.getDay(S, date), cur = L.nextSet(S, date), last = L.lastLoggedSet(S, date);
   const pctOf = (e) => Math.round((100 * Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length) / e.sets);
   const strip = `<div class="strip" role="img" aria-label="Exercise progress">${exs.map((e) => { const pct = pctOf(e); return `<div class="seg${cur && cur.e.id === e.id ? " current" : ""}${pct === 100 ? " complete" : ""}"><div class="pfill" data-key="${date}|ex-${e.id}" data-pct="${pct}" style="width:${pct}%"></div></div>`; }).join("")}</div>`;
-  const nav = `<div class="row" style="margin-top:10px">${btn("↶ Previous set", { a: "gback" }, { disabled: !last })}${cur ? btn("Skip this set", { a: "gskip" }) : ""}</div>`;
+  const nav = `<div class="grid-btns" style="--n:${cur ? 2 : 1};margin-top:10px">${btn("↶ Previous", { a: "gback" }, { disabled: !last })}${cur ? btn("Skip set", { a: "gskip" }) : ""}</div>`;
   if (!cur) return `${strip}<div class="guided finish" data-gkey="${date}|done"><h2>All sets logged 🎉</h2><p class="muted">Nice work. Switch to List to review loads or fix a set.</p>${nav}</div>`;
   const { e, i, xi } = cur;
   const nextTxt = i + 1 < e.sets ? `Next: set ${i + 2} of ${e.sets}` : exs[xi + 1] ? `Next up: ${esc(exs[xi + 1].name)}` : "Last set of the workout";
-  return `${strip}<div class="guided" data-gkey="${date}|${e.id}"><div class="muted small">Exercise ${xi + 1} of ${exs.length}</div>
+  return `${strip}<div class="guided center" data-gkey="${date}|${e.id}"><div class="muted small">Exercise ${xi + 1} of ${exs.length}</div>
     <h2 style="margin:2px 0 4px">${esc(e.name)}</h2>
     <div class="muted">${e.sets} × ${esc(e.reps)}${e.isDensity ? ` · <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}</div>
     ${e.cue ? `<div class="muted small" style="margin-top:4px">${esc(e.cue)}</div>` : ""}
     ${e.loaded ? loadRow(S, ui, e) : ""}
-    <div class="big" style="margin:12px 0 6px">Set ${i + 1} of ${e.sets}</div>
+    <div class="setno">Set ${i + 1} <span>of ${e.sets}</span></div>
     <button type="button" class="primary giant" data-a="set" data-ex="${e.id}" data-i="${i}" data-g="1" data-fk="guided-go" aria-label="Complete ${esc(e.name)} set ${i + 1} of ${e.sets}">✓ Complete set</button>
     <div class="muted small" style="margin-top:6px">${nextTxt}</div>${nav}</div>`;
 }
@@ -171,20 +172,23 @@ function guided(S, ui, exs) {
 function loadRow(S, ui, e) {
   const logged = L.getDay(S, ui.date).loads?.[e.id]?.lb, { last, best } = L.loadHistory(S, e.id, ui.date);
   const draft = ui.loadDraft[e.id] ?? logged ?? last?.lb ?? 0;
-  const lastTxt = last ? `Last: ${last.lb} lb (${shortDate(last.date)})${best && best.lb > last.lb ? ` · Best: ${best.lb} lb` : ""}` : "No load logged yet";
-  return `<div class="row small" style="margin:6px 0"><span class="muted">${lastTxt}</span></div>
-    <div class="row small"><span class="muted">Weight (lb), tap to adjust:</span></div>
-    <div class="row small"><strong aria-live="polite">${draft} lb${logged != null && logged === draft ? " ✓" : ""}</strong>
-      ${L.LOAD_STEPS.map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "lstep", ex: e.id, v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} pounds for ${e.name}` })).join("")}
-      ${btn(logged != null && logged === draft ? "Logged" : "Log load", { a: "llog", ex: e.id }, { cls: "primary", aria: `Log ${draft} pounds for ${e.name}` })}${logged != null ? btn("Clear", { a: "lclear", ex: e.id }, { cls: "link" }) : ""}</div>`;
+  const isLogged = logged != null && logged === draft;
+  const lastTxt = last ? `Last ${last.lb} lb · ${shortDate(last.date)}${best && best.lb > last.lb ? ` · Best ${best.lb}` : ""}` : "No weight logged yet";
+  const step = (v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "lstep", ex: e.id, v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} pounds for ${e.name}` });
+  const minus = L.LOAD_STEPS.filter((v) => v < 0).reverse(), plus = L.LOAD_STEPS.filter((v) => v > 0);
+  return `<div class="loadbox"><div class="muted small center">${lastTxt}</div>
+    <div class="bignum" aria-live="polite">${draft}<small> lb</small>${isLogged ? '<span class="tick" aria-label="logged"> ✓</span>' : ""}</div>
+    <div class="grid-btns" style="--n:${minus.length}">${minus.map(step).join("")}</div>
+    <div class="grid-btns" style="--n:${plus.length};margin-top:8px">${plus.map(step).join("")}</div>
+    ${btn(isLogged ? "Weight logged ✓" : "Log weight", { a: "llog", ex: e.id }, { cls: "primary block", aria: `Log ${draft} pounds for ${e.name}` })}${logged != null ? `<div class="center">${btn("Clear weight", { a: "lclear", ex: e.id }, { cls: "link" })}</div>` : ""}</div>`;
 }
 
 export function workout(S, ui) {
   const date = ui.date, routine = L.routineForDate(S, date), sched = L.SCHEDULE[L.weekdayOf(date)];
   const day = L.getDay(S, date), skipped = day.workout?.skipped;
   const ov = day.workout?.override;
-  const opts = [["", "Scheduled"], ["A", "Gym A"], ["B", "Gym B"], ["H1", "Home 1"], ["H2", "Home 2"], ["walk", "Walk"], ["rest", "Rest"]];
-  const picker = `<div class="chips" role="group" aria-label="Today's routine">${opts.map(([v, l]) => btn(l, { a: "override", v }, { on: (ov || "") === v })).join("")}</div>`;
+  const opts = [["", "Plan"], ["A", "Gym A"], ["B", "Gym B"], ["H1", "Home 1"], ["H2", "Home 2"], ["walk", "Walk"], ["rest", "Rest"]];
+  const picker = `<div class="grid-btns" style="--n:4" role="group" aria-label="Today's routine">${opts.map(([v, l]) => btn(l, { a: "override", v }, { on: (ov || "") === v })).join("")}</div>`;
   let body;
   if (!L.isLoadedRoutine(routine)) {
     const dp = L.dayProgress(S, date);
@@ -226,7 +230,8 @@ export function workout(S, ui) {
   return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${L.ROUTINE_LABEL[ov]}</em>` : ""}</h2>${picker}
     <div id="rest-box" class="row" style="margin:10px 0"><span class="timer" id="rtime" aria-live="off">${ui.rest ? "" : ""}</span>
       ${ui.rest ? btn("Cancel rest", { a: "restcancel" }) : ""}</div>
-    <div class="row small" role="group" aria-label="Rest timer length"><span class="muted">Auto-rest after a set:</span>${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
+    <div class="muted small" style="margin:10px 0 6px">Auto-rest after a set</div>
+    <div class="grid-btns" style="--n:6" role="group" aria-label="Rest timer length">${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
     ${body}</section>
     <section class="card"><h2>Training rules</h2>
       <ul class="small" style="padding-left:18px;margin:0"><li>No bicep curls, chin-ups or other underhand pulling. Rows, pulldowns and pull-ups are overhand or neutral grip.</li>
@@ -317,7 +322,9 @@ function reviewCard(S, ui) {
     <div class="stack">${chk("rvWeight", "Reviewed weekly average weight")}${chk("rvNutrition", "Reviewed nutrition adherence")}${chk("rvTraining", "Reviewed training completion")}${chk("rvSymptoms", "Reviewed elbow and neck symptom trend")}</div>
     <h3>Next-week calorie target</h3><div class="chips" role="group" aria-label="Calorie adjustment">${L.REVIEW_CALORIE_OPTIONS.map((o) => btn(o === "Keep" ? o : `${o} kcal/day`, { a: "rvpick", k: "calorieAdjustment", v: o }, { on: r.calorieAdjustment === o })).join("")}</div>
     <h3>Training status</h3><div class="chips" role="group" aria-label="Training status">${L.REVIEW_TRAINING_OPTIONS.map((o) => btn(o, { a: "rvpick", k: "trainingDecision", v: o }, { on: r.trainingDecision === o })).join("")}</div>
-    <h3>Waist (inches, optional)</h3><div class="row"><span class="big">${waist.toFixed(2)}</span>${[-1, -0.25, 0.25, 1].map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "waist", v })).join("")}${btn(r.waistIn === waist ? "Logged ✓" : "Log waist", { a: "waistlog" }, { cls: "primary" })}</div>
+    <h3 class="center">Waist (inches, optional)</h3><div class="bignum">${waist.toFixed(2)}<small> in</small></div>
+    <div class="grid-btns" style="--n:4">${[-1, -0.25, 0.25, 1].map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "waist", v })).join("")}</div>
+    ${btn(r.waistIn === waist ? "Waist logged ✓" : "Log waist", { a: "waistlog" }, { cls: "primary block" })}
     <p class="muted small">The starting value is a placeholder — step to your measurement.</p></section>`;
 }
 

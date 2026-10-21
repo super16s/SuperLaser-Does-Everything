@@ -247,3 +247,30 @@ details.card > summary { border-radius: 12px; }
 /* food picker: two per row, serving size on its own line */
 .chips.foods button { flex: 1 1 calc(50% - 8px); border-radius: 14px; text-align: left; padding: 8px 12px; font-size: .92rem; line-height: 1.25; }
 .chips.foods button .muted { display: block; font-weight: 400; }
+
+/* ---- phone-friendly tiles: big numbers, single-line button rows, full-width actions ---- */
+.center { text-align: center; }
+.bignum { text-align: center; font-size: 3rem; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.bignum small { font-size: 1.1rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.bignum .tick { color: var(--accent); font-size: 1.6rem; }
+.grid-btns { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 6px; }
+.grid-btns button { min-width: 0; padding: 10px 2px; font-size: .95rem; white-space: nowrap; }
+button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; font-size: 1.05rem; }
+.chips.nowrap { flex-wrap: nowrap; gap: 4px; }
+.chips.nowrap button { flex: 1 1 0; min-width: 0; padding: 8px 2px; font-size: .88rem; white-space: nowrap; }
+.chips.portions { flex-wrap: nowrap; gap: 4px; }
+.chips.portions button { flex: 1 1 0; white-space: nowrap; font-size: .92rem; }
+.mealhead { display: flex; flex-direction: column; gap: 1px; }
+.mealhead strong { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mealhead .muted { font-size: .9rem; white-space: nowrap; }
+.loadbox { margin: 8px 0 4px; }
+.setno { text-align: center; font-size: 2rem; font-weight: 800; letter-spacing: -.01em; margin: 14px 0 8px; }
+.setno span { font-size: 1rem; font-weight: 600; color: var(--muted); }
+.guided h2 { font-size: 1.15rem; }
+.guided .muted.small, .guided .muted { text-wrap: balance; }
+.grid-btns.tight button { font-size: .8rem; padding: 10px 0; letter-spacing: -.02em; }
+
+.datebar { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; margin-top: 6px; }
+.datebar button { flex: none; min-width: 44px; padding: 8px 12px; }
+.datebar input[type="date"] { flex: 1 1 0; min-width: 0; }
+.grid-btns button[aria-pressed="true"]::before { content: none; }
