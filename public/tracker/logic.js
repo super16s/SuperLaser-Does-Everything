@@ -13,17 +13,24 @@ export const SLOTS = [
 ];
 
 export const DEFAULT_PRESETS = [
-  { id: "breakfast-default", slot: "breakfast", label: "Breakfast", calories: 800, protein: 35,
-    ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+  { id: "breakfast-default", slot: "breakfast", label: "Breakfast", calories: 765, protein: 35,
+    ingredients: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
   { id: "lunch-default", slot: "lunch", label: "Lunch", calories: 800, protein: 50,
     ingredients: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
-  { id: "shake-default", slot: "shake", label: "Weight-gain shake", calories: 530, protein: 18,
-    ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+  { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 590, protein: 41,
+    ingredients: "1 cup soy milk, 1 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
   { id: "dinner-default", slot: "dinner", label: "Dinner", calories: 650, protein: 40,
     ingredients: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
   { id: "snack-default", slot: "snack", label: "Greek yogurt snack", calories: 80, protein: 12,
     ingredients: "1/2 cup plain Greek yogurt" },
 ];
+
+// v1 defaults for the two presets that changed in nutrition v2 (dairy-free early
+// in the day + plant protein). Used only to migrate presets the user never edited.
+export const LEGACY_PRESETS_V1 = {
+  "breakfast-default": { label: "Breakfast", calories: 800, protein: 35, ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+  "shake-default": { label: "Weight-gain shake", calories: 530, protein: 18, ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+};
 
 export const PORTIONS = [
   { value: 0, label: "None" },
@@ -187,6 +194,8 @@ export const PAIN = {
 export const CHECKLIST = [
   { id: "weigh", section: "Morning", label: "Weighed in (optional)", derive: { type: "weight" } },
   { id: "m-breakfast", section: "Morning", label: "Breakfast completed", derive: { type: "meal", slot: "breakfast" } },
+  { id: "creatine", section: "Morning", label: "Creatine (3–5 g) taken", derive: { type: "manual" } },
+  { id: "liver", section: "Morning", label: "Liver capsules taken", derive: { type: "manual" } },
   { id: "pain-am", section: "Morning", label: "Morning pain check completed", derive: { type: "pain", tod: "morning" } },
   { id: "m-lunch", section: "Midday", label: "Lunch completed", derive: { type: "meal", slot: "lunch" } },
   { id: "water1", section: "Midday", label: "Water check 1 completed", derive: { type: "hydration", n: 1 } },
@@ -205,9 +214,9 @@ export const CHECK_STATUSES = [
   { id: "skipped", label: "Skipped" }, { id: "substituted", label: "Substituted" },
 ];
 
-export const GROCERIES = ["Eggs", "Whole milk", "Oats", "Bananas", "Peanut butter", "Chicken thighs",
+export const GROCERIES = ["Eggs", "Unsweetened soy milk", "Oats", "Bananas", "Peanut butter", "Chicken thighs",
   "Ground turkey (or lower-cost equivalent)", "Rice", "Beans", "Pasta", "Tomato sauce", "Frozen vegetables",
-  "Plain Greek yogurt", "Olive oil / pantry staples"];
+  "Plain Greek yogurt", "Olive oil / pantry staples", "Restock when low: plant protein, creatine, liver capsules"];
 export const MEAL_PREP = ["Cook batch protein", "Cook rice / pasta", "Portion lunches",
   "Prepare shake ingredients", "Check groceries for next 3–4 days"];
 

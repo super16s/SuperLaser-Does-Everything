@@ -5,7 +5,7 @@
 import {
   DEFAULT_PRESETS, DEFAULT_BOOSTERS, defaultReminders, REMINDER_CATEGORIES, YOGA_STAGES,
   ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN, LADDER, ladderStepAvailable,
-  LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
+  LEGACY_PRESETS_V1, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
 } from "./logic.js";
 
 const KEY = "superlaser-tracker-v1";
@@ -14,6 +14,7 @@ const MAX_UNDO = 25;
 export function defaultState(now = new Date()) {
   return {
     version: 1,
+    nutritionVersion: 2,
     profile: { startingWeight: 159, goalWeight: 174, calorieTarget: 2850, proteinTarget: 150, startDate: ymd(now), timezone: localTz() },
     mealPresets: structuredClone(DEFAULT_PRESETS),
     boosters: structuredClone(DEFAULT_BOOSTERS),
@@ -31,12 +32,22 @@ export function defaultState(now = new Date()) {
 
 function normalize(s) {
   const d = defaultState();
-  const out = { ...d, ...s };
+  const migrateNutrition = s.nutritionVersion !== 2;
+  const out = { ...d, ...s, nutritionVersion: 2 };
   for (const k of ["profile", "reminderCategories", "reminderState", "clearance"]) out[k] = { ...d[k], ...(s[k] || {}) };
   out.clearance.ladder ||= {}; out.clearance.exercises ||= {};
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};
   for (const k of ["days", "weeklyReviews", "lists", "progression"]) out[k] ||= {};
   for (const k of ["mealPresets", "boosters", "reminders", "pain"]) if (!Array.isArray(out[k])) out[k] = d[k];
+  if (migrateNutrition) {
+    // Swap in the dairy-free breakfast / plant-protein shake only where the user never edited the v1 preset.
+    for (const nd of d.mealPresets) {
+      const legacy = LEGACY_PRESETS_V1[nd.id], i = out.mealPresets.findIndex((p) => p.id === nd.id);
+      if (!legacy || i < 0) continue;
+      const cur = out.mealPresets[i];
+      if (Object.keys(legacy).every((k) => cur[k] === legacy[k])) out.mealPresets[i] = { ...cur, ...nd };
+    }
+  }
   return out;
 }
 

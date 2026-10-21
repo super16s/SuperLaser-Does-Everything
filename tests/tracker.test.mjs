@@ -14,10 +14,10 @@ test("calendar assumptions used by the tests", () => {
   assert.equal(L.weekStartOf(SUN), MON);
 });
 
-test("all five meals Full → 2,860 kcal / 155 g", () => {
+test("all five meals Full → 2,885 kcal / 178 g (v2 presets)", () => {
   const st = fresh();
   for (const slot of L.SLOTS) run(st, (s) => A.setMeal(s, MON, slot.id, 1));
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 2860, protein: 155 });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 2885, protein: 178 });
 });
 
 test("half lunch → 400 kcal / 25 g; untapping removes it", () => {
@@ -323,4 +323,29 @@ test("load levels for non-ladder exercises go up and down within bounds", () => 
   assert.equal(L.progressLevel(st.state, "a-squat"), L.MAX_LOAD_LEVEL);
   run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "a-squat", -1); });
   assert.equal(L.progressLevel(st.state, "a-squat"), 0);
+});
+
+test("nutrition v2 migration updates untouched v1 presets only, and keeps user edits", () => {
+  const v1 = createStore(mem()).state;
+  const old = structuredClone(v1);
+  delete old.nutritionVersion;
+  Object.assign(old.mealPresets.find((p) => p.id === "breakfast-default"), L.LEGACY_PRESETS_V1["breakfast-default"]);
+  Object.assign(old.mealPresets.find((p) => p.id === "shake-default"), L.LEGACY_PRESETS_V1["shake-default"], { calories: 999 }); // user edited the shake
+  const store = createStore(mem());
+  store.importJson(JSON.stringify(old));
+  const get = (id) => store.state.mealPresets.find((p) => p.id === id);
+  assert.equal(get("breakfast-default").calories, 765);
+  assert.match(get("breakfast-default").ingredients, /soy milk/);
+  assert.equal(get("shake-default").calories, 999); // untouched by migration
+  assert.equal(store.state.nutritionVersion, 2);
+  const again = createStore(mem()); again.importJson(store.exportJson());
+  assert.equal(again.state.mealPresets.find((p) => p.id === "shake-default").calories, 999); // idempotent
+});
+
+test("supplement checklist items are manual and per-day", () => {
+  const st = fresh();
+  const cr = L.CHECKLIST.find((i) => i.id === "creatine");
+  run(st, (s) => A.setCheck(s, MON, "creatine", "done"));
+  assert.equal(L.checklistStatus(st.state, MON, cr), "done");
+  assert.equal(L.checklistStatus(st.state, TUE, cr), null);
 });

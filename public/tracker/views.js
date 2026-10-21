@@ -102,7 +102,7 @@ export function today(S, ui) {
 function lists(S, ui) {
   const wk = L.weekStartOf(ui.date);
   const mk = (title, key, items) => `<details class="card"><summary><strong>${title}</strong></summary><ul class="checklist">${items.map((it) => `<li>${btn(`<span class="glyph" aria-hidden="true">${S.lists[key]?.[it] ? "✓" : "○"}</span> ${esc(it)}`, { a: "list", key, item: it }, { cls: "item", on: !!S.lists[key]?.[it] })}</li>`).join("")}</ul></details>`;
-  return mk("Weekly grocery checklist (≈ $67–93/week; local prices unverified)", `grocery|${wk}`, L.GROCERIES) + mk("Sunday meal-prep checklist", `prep|${wk}`, L.MEAL_PREP);
+  return mk("Weekly grocery checklist (goal: under $75/week incl. supplements; local prices unverified)", `grocery|${wk}`, L.GROCERIES) + mk("Sunday meal-prep checklist", `prep|${wk}`, L.MEAL_PREP);
 }
 
 // ---------- Workout ----------
