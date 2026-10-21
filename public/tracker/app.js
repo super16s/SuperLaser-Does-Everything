@@ -231,6 +231,8 @@ const handlers = {
   // settings
   pstep(d) { act((s) => { s.profile[d.f] = Math.max(0, Math.round((s.profile[d.f] + +d.v) * 10) / 10); }, "Target updated"); },
   ladder(d) { const on = !!S().clearance.ladder[d.id]; if (!on && L.ladderStepAvailable(S(), L.LADDER.findIndex((l) => l.id === d.id)) === false) return; act((s) => A.setLadder(s, d.id, !on), on ? "Step reverted (later steps re-locked)" : "Step recorded"); },
+  flagall: () => act((s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)), "All upper-body exercises flagged"),
+  ready: (d) => act((s) => A.setReadiness(s, ui.date, d.id), "Readiness updated"),
   exflag(d) { act((s) => A.setExerciseFlag(s, d.id, d.f, !S().clearance.exercises[d.id]?.[d.f]), "Exercise flag updated"); },
   rcat: (d) => act((s) => { s.reminderCategories[d.id] = s.reminderCategories[d.id] === false; }, "Reminder category"),
   ron: (d) => act((s) => { const r = s.reminders.find((x) => x.id === d.id); r.enabled = !r.enabled; }, "Reminder"),

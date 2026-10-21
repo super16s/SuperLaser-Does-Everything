@@ -92,6 +92,16 @@ export const UPPER_BODY = [
   ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 2, clearanceRequired: true }),
   ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 3, clearanceRequired: true }),
   ex("u-row", "Light rows", 2, "8–12", { phase: 3, clearanceRequired: true }),
+  ex("u-curl", "Light curls (start very light)", 2, "8–10", { phase: 3, clearanceRequired: true }),
+  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 4, clearanceRequired: true }),
+];
+
+// Quick pre-session check before any cleared upper-body work. Advisory: it
+// recommends lower-body only if anything is unticked; it never clears anything.
+export const READINESS = [
+  { id: "rom", label: "Full elbow range today with no pain" },
+  { id: "resist", label: "No pain with light palm-up resistance" },
+  { id: "nextday", label: "No symptoms the day after my last upper-body session" },
 ];
 
 export const REST_OPTIONS = [45, 60, 90];

@@ -120,7 +120,12 @@ export function workout(S, ui) {
       ${routine === "walk" ? btn(walked ? "Walk done" : "Mark walk done", { a: "walkdone" }, { on: walked }) : ""}`;
   } else {
     const exs = L.exercisesForDate(S, date), prog = L.workoutProgress(S, date);
-    body = `<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
+    const hasUpper = exs.some((e) => e.clearanceRequired);
+    const rd = day.readiness || {}, rdOk = L.READINESS.every((r) => rd[r.id]);
+    const readiness = hasUpper ? `<div class="alert ${rdOk ? "info" : ""}"><strong>Upper-body readiness</strong>
+      <div class="stack" style="margin-top:6px">${L.READINESS.map((r) => btn(r.label, { a: "ready", id: r.id }, { on: !!rd[r.id] })).join("")}</div>
+      <p class="small" style="margin:8px 0 0">${rdOk ? "All clear for today. Add load or reps gradually; stop if symptoms appear." : "If any of these is a no, do the lower-body sets only today and skip the upper-body ones."}</p></div>` : "";
+    body = `${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
     ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
@@ -293,7 +298,7 @@ export function settings(S, ui) {
     <p class="muted small">Timezone: ${esc(S.profile.timezone)}. Start/goal weights are scale-weight targets, not lean mass. Calorie targets are estimates.</p></section>
   <section class="card"><h2>Injury clearance gates</h2>
     <p class="muted small">Record only what actually happened. Each step unlocks the next; upper-body exercises need clearance <em>plus</em> both per-exercise flags.</p>
-    <ul class="checklist">${lad}</ul><h3>Per-exercise flags</h3>${exFlags}</section>
+    <ul class="checklist">${lad}</ul><h3>Per-exercise flags</h3>${btn("My clinician cleared all of these — flag all", { a: "flagall" }, { disabled: !S.clearance.ladder.clearance })}${exFlags}</section>
   <section class="card"><h2>Meal presets</h2><p class="muted small">Estimates — edit to match your brands and portions. Changing a preset doesn't rewrite meals you've already logged.</p>${presets}
     <div class="row" style="margin-top:8px"><label class="small muted" for="newslot">New preset for</label><select id="newslot">${L.SLOTS.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select>${btn("Add preset", { a: "addpreset" })}</div></section>
   <section class="card"><h2>Calorie boosters</h2>${boosters}</section>

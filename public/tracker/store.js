@@ -226,6 +226,19 @@ export const actions = {
     e[flag] = !!value;
   },
 
+  // One-tap "my clinician cleared all of these" — still requires the documented-clearance step.
+  flagAllExercises(s, exIds) {
+    if (!s.clearance.ladder.clearance) return;
+    for (const id of exIds) s.clearance.exercises[id] = { cleared: true, painFree: true };
+  },
+  setReadiness(s, date, id) {
+    const d = day(s, date);
+    d.readiness ||= {};
+    if (d.readiness[id]) delete d.readiness[id]; else d.readiness[id] = stamp();
+    if (!Object.keys(d.readiness).length) delete d.readiness;
+    prune(s, date);
+  },
+
   setList(s, key, item) {
     const l = (s.lists[key] ||= {});
     if (l[item]) delete l[item]; else l[item] = true;

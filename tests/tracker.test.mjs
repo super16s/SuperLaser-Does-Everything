@@ -217,3 +217,23 @@ test("yoga: four stages = yoga done; meditation separate", () => {
   run(st, (d) => A.setYogaStage(d, MON, "meditation", "done"));
   assert.equal(L.derivedStatus(st.state, MON, item("meditation")), "done");
 });
+
+test("bulk flag needs documented clearance, then unlocks every upper-body exercise", () => {
+  const st = fresh();
+  const ids = L.UPPER_BODY.map((u) => u.id);
+  run(st, (s) => A.flagAllExercises(s, ids));
+  assert.ok(ids.every((id) => !L.isExerciseUnlocked(st.state, id)));
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, ids));
+  assert.ok(ids.every((id) => L.isExerciseUnlocked(st.state, id)));
+  assert.ok(L.exercisesForDate(st.state, MON).some((e) => e.id === "u-curl"));
+});
+
+test("readiness ticks are per-day and toggle", () => {
+  const st = fresh();
+  run(st, (s) => A.setReadiness(s, MON, "rom"));
+  assert.ok(L.getDay(st.state, MON).readiness.rom);
+  assert.equal(L.getDay(st.state, TUE).readiness, undefined);
+  run(st, (s) => A.setReadiness(s, MON, "rom"));
+  assert.equal(L.getDay(st.state, MON).readiness, undefined);
+});
