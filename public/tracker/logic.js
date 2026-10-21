@@ -13,8 +13,8 @@ export const SLOTS = [
   { id: "snack", label: "Evening snack", section: "Afternoon / evening" },
 ];
 export const PRAYERS = [
-  { id: "morning", label: "Morning prayer" },
-  { id: "evening", label: "Evening prayer" },
+  { id: "morning", label: "Morning Gratitude" },
+  { id: "evening", label: "Evening Conscious Connection" },
 ];
 
 export const DEFAULT_PRESETS = [
@@ -294,7 +294,7 @@ export const PAIN = {
 // section → rendering group. derive tells the UI where the real control lives.
 export const CHECKLIST = [
   // Morning (same order as the Today screen)
-  { id: "prayer-am", section: "Morning", label: "Morning prayer", derive: { type: "prayer", which: "morning" } },
+  { id: "prayer-am", section: "Morning", label: "Morning Gratitude", derive: { type: "prayer", which: "morning" } },
   { id: "weigh", section: "Morning", label: "Weighed in (optional)", derive: { type: "weight" } },
   { id: "sleep", section: "Morning", label: "Sleep recorded", derive: { type: "sleep" } },
   { id: "m-breakfast", section: "Morning", label: "Breakfast completed", derive: { type: "meal", slot: "breakfast" } },
@@ -313,7 +313,7 @@ export const CHECKLIST = [
   { id: "meditation", section: "Afternoon / evening", label: "Meditation (4 minutes) completed", derive: { type: "meditation" } },
   { id: "pain-pm", section: "Afternoon / evening", label: "Evening pain check completed", derive: { type: "pain", tod: "evening" } },
   { id: "sleep-plan", section: "Afternoon / evening", label: "Sleep plan confirmed", derive: { type: "manual" } },
-  { id: "prayer-pm", section: "Afternoon / evening", label: "Evening prayer", derive: { type: "prayer", which: "evening" } },
+  { id: "prayer-pm", section: "Afternoon / evening", label: "Evening Conscious Connection", derive: { type: "prayer", which: "evening" } },
 ];
 export const CHECK_STATUSES = [
   { id: "done", label: "Done" }, { id: "partial", label: "Partial" },

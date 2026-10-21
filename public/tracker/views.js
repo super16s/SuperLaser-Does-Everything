@@ -121,7 +121,7 @@ export function today(S, ui) {
   const boosterCard = `<section class="card"><h2>Calorie boosters</h2><div class="row">${boosters}</div>
       ${(day.boosters || []).map((b) => `<div class="row between small" style="margin-top:6px"><span>+${b.calories} kcal · ${esc(b.foods)}</span>${btn("Remove", { a: "rmbooster", id: b.id }, { cls: "link" })}</div>`).join("")}
       <p class="muted small">Boosters need foods assigned in Settings; unassigned ones add nothing.</p></section>`;
-  // The day, in order: prayer, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then prayer.
+  // The day, in order: morning gratitude, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then evening conscious connection.
   return `${prayerCard(S, ui, L.PRAYERS[0])}${weightCard}${sleepCard}${totalsCard}
     ${["breakfast", "snack1", "lunch", "shake", "dinner", "snack"].map(meal).join("")}
     ${extrasCard(S, ui)}${boosterCard}${prayerCard(S, ui, L.PRAYERS[1])}

@@ -274,3 +274,7 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .datebar button { flex: none; min-width: 44px; padding: 8px 12px; }
 .datebar input[type="date"] { flex: 1 1 0; min-width: 0; }
 .grid-btns button[aria-pressed="true"]::before { content: none; }
+
+/* Gratitude / Conscious Connection buttons: label scales so it stays on one line on small phones */
+.card.prayer button.giant { font-size: clamp(.92rem, 4.4vw, 1.3rem); gap: 10px; padding-left: 8px; padding-right: 8px; letter-spacing: -.01em; white-space: nowrap; }
+.card.prayer .pxicon { width: 34px; height: 34px; }
