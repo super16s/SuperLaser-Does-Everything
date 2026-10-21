@@ -5,6 +5,7 @@
 import {
   DEFAULT_PRESETS, DEFAULT_BOOSTERS, defaultReminders, REMINDER_CATEGORIES, YOGA_STAGES,
   ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN, LADDER, ladderStepAvailable,
+  LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
 } from "./logic.js";
 
 const KEY = "superlaser-tracker-v1";
@@ -20,6 +21,7 @@ export function defaultState(now = new Date()) {
     reminderCategories: Object.fromEntries(REMINDER_CATEGORIES.map((c) => [c.id, true])),
     reminderState: { fired: {}, skipped: {}, snoozedUntil: {} },
     clearance: { ladder: {}, exercises: {} },
+    progression: {}, // key → { level, changedAt, history }
     days: {},
     pain: [],
     weeklyReviews: {},
@@ -33,7 +35,7 @@ function normalize(s) {
   for (const k of ["profile", "reminderCategories", "reminderState", "clearance"]) out[k] = { ...d[k], ...(s[k] || {}) };
   out.clearance.ladder ||= {}; out.clearance.exercises ||= {};
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};
-  for (const k of ["days", "weeklyReviews", "lists"]) out[k] ||= {};
+  for (const k of ["days", "weeklyReviews", "lists", "progression"]) out[k] ||= {};
   for (const k of ["mealPresets", "boosters", "reminders", "pain"]) if (!Array.isArray(out[k])) out[k] = d[k];
   return out;
 }
@@ -237,6 +239,24 @@ export const actions = {
     if (d.readiness[id]) delete d.readiness[id]; else d.readiness[id] = stamp();
     if (!Object.keys(d.readiness).length) delete d.readiness;
     prune(s, date);
+  },
+
+  // dir +1 / -1. Moving up a ladder needs the next variant to be cleared + pain-free.
+  progress(s, key, dir) {
+    const cur = L_progressLevel(s, key);
+    let next;
+    if (LADDERS[key]) {
+      const v = shownLadderVariant(s, key);
+      if (!v) return;
+      if (dir > 0 && !canProgress(s, key)) return;
+      next = Math.max(0, Math.min(LADDERS[key].length - 1, v.i + dir));
+    } else {
+      if (dir > 0 && !canProgress(s, key)) return;
+      next = Math.max(0, Math.min(MAX_LOAD_LEVEL, cur + dir));
+    }
+    const p = (s.progression[key] ||= { level: 0, history: [] });
+    p.history.push({ from: LADDERS[key] ? shownLadderVariant(s, key).i : cur, to: next, ...stamp() });
+    p.level = next; p.changedAt = new Date().toISOString();
   },
 
   setList(s, key, item) {

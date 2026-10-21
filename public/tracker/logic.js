@@ -108,6 +108,22 @@ export const READINESS = [
   { id: "nextday", label: "No symptoms the day after my last upper-body session" },
 ];
 
+// Progression ladders (easier → harder variants of the same movement). The shown
+// variant follows state.progression, but never one that isn't cleared + pain-free.
+export const LADDERS = { push: ["u-wall-push", "u-incline-push", "u-push"] };
+export const LADDER_OF = Object.fromEntries(Object.entries(LADDERS).flatMap(([k, ids]) => ids.map((id) => [id, k])));
+export const MAX_LOAD_LEVEL = 10;
+
+// Session order: 1 warm-up/rehab → 2 main leg lift → 3 main upper push/pull →
+// 4 secondary → 5 accessories. A density lift is moved up to 1.5 (fresh legs).
+const STAGE = {
+  "u-iso": 1, "u-band": 1, "a-heel": 1, "b-march": 1,
+  "a-squat": 2, "b-split": 2,
+  "u-wall-push": 3, "u-incline-push": 3, "u-push": 3, "u-press": 3, "u-pulldown": 3, "u-ohp": 3,
+  "a-lunge": 4, "a-bridge": 4, "b-chair": 4, "b-sl-bridge": 4, "u-row": 4,
+  "u-tri": 5, "a-calf": 5, "b-sissy": 5, "b-wall": 5,
+};
+
 export const REST_OPTIONS = [45, 60, 90, 120, 180];
 
 export const PHASES = [
@@ -301,13 +317,37 @@ export function setsFor(state, date, e) {
   const wave = e.clearanceRequired ? WAVE_UPPER : WAVE_LOWER;
   return e.sets + wave[waveInfo(state, date).weekInBlock];
 }
+export const progressLevel = (state, key) => state.progression?.[key]?.level ?? 0;
+// Which ladder variant to show: the one at the current level if cleared, else the
+// nearest cleared one at/above it, else the highest cleared below it.
+export function shownLadderVariant(state, key) {
+  const ids = LADDERS[key], lvl = progressLevel(state, key);
+  const open = ids.map((id, i) => ({ id, i })).filter((v) => isExerciseUnlocked(state, v.id));
+  if (!open.length) return null;
+  return (open.find((v) => v.i >= lvl) || open[open.length - 1]);
+}
+export function canProgress(state, key) {
+  if (LADDERS[key]) {
+    const cur = shownLadderVariant(state, key);
+    return !!cur && cur.i + 1 < LADDERS[key].length && isExerciseUnlocked(state, LADDERS[key][cur.i + 1]);
+  }
+  return progressLevel(state, key) < MAX_LOAD_LEVEL;
+}
 export function exercisesForDate(state, date) {
   const r = routineForDate(state, date);
   if (!isLoadedRoutine(r)) return [];
   const base = WORKOUTS[r];
-  const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id) && (!u.days || u.days.includes(r)));
+  const shown = new Set(Object.keys(LADDERS).map((k) => shownLadderVariant(state, k)?.id).filter(Boolean));
+  const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id) && (!u.days || u.days.includes(r)) && (!LADDER_OF[u.id] || shown.has(u.id)));
   const dense = isDensityWeek(state, date);
-  return [...base, ...upper].map((e) => ({ ...e, sets: setsFor(state, date, e), isDensity: !!(e.density && dense) }));
+  return [...base, ...upper]
+    .map((e) => {
+      const key = LADDER_OF[e.id] || e.id;
+      return { ...e, sets: setsFor(state, date, e), isDensity: !!(e.density && dense), progKey: key, level: LADDERS[key] ? shownLadderVariant(state, key).i : progressLevel(state, key), ladder: !!LADDERS[key] };
+    })
+    .map((e, i) => ({ e, i, st: e.isDensity ? 1.5 : STAGE[e.id] ?? 4 }))
+    .sort((a, b) => a.st - b.st || a.i - b.i)
+    .map((x) => x.e);
 }
 export function setKey(exId, i) { return `${exId}#${i}`; }
 export function workoutProgress(state, date) {

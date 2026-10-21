@@ -283,3 +283,44 @@ test("no curls anywhere; upper work is split across A and B; triceps and rows on
   assert.ok(ids(WED).includes("u-ohp") && ids(WED).includes("u-pulldown") && !ids(WED).includes("u-press"));
   for (const d of [MON, WED]) assert.ok(ids(d).includes("u-tri") && ids(d).includes("u-row"));
 });
+
+test("session order: warm-up → main leg → main upper → secondary → accessories; density lift moves first", () => {
+  const st = fresh();
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
+  const ids = (d) => L.exercisesForDate(st.state, d).map((e) => e.id);
+  assert.deepEqual(ids(MON), ["a-heel", "u-iso", "u-band", "a-squat", "u-wall-push", "u-press", "a-lunge", "a-bridge", "u-row", "a-calf", "u-tri"]);
+  assert.deepEqual(ids(L.addDays(WED, 14)).slice(0, 5), ["b-march", "u-iso", "u-band", "b-chair", "b-split"]); // density lift first
+  assert.deepEqual(ids(WED).slice(0, 5), ["b-march", "u-iso", "u-band", "b-split", "u-pulldown"]);
+});
+
+test("push-up ladder shows one variant; progress needs the next to be cleared", () => {
+  const st = fresh();
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => { A.setExerciseFlag(s, "u-wall-push", "cleared", true); A.setExerciseFlag(s, "u-wall-push", "painFree", true); });
+  const pushes = () => L.exercisesForDate(st.state, MON).filter((e) => L.LADDER_OF[e.id]).map((e) => e.id);
+  assert.deepEqual(pushes(), ["u-wall-push"]);
+  assert.equal(L.canProgress(st.state, "push"), false);
+  run(st, (s) => A.progress(s, "push", 1)); // refused
+  assert.deepEqual(pushes(), ["u-wall-push"]);
+  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
+  assert.deepEqual(pushes(), ["u-wall-push"]); // flags alone don't skip steps
+  run(st, (s) => A.progress(s, "push", 1));
+  assert.deepEqual(pushes(), ["u-incline-push"]);
+  run(st, (s) => A.progress(s, "push", 1));
+  assert.deepEqual(pushes(), ["u-push"]);
+  assert.equal(L.canProgress(st.state, "push"), false);
+  run(st, (s) => A.progress(s, "push", -1));
+  assert.deepEqual(pushes(), ["u-incline-push"]);
+  assert.equal(st.state.progression.push.history.length, 3);
+});
+
+test("load levels for non-ladder exercises go up and down within bounds", () => {
+  const st = fresh();
+  run(st, (s) => A.progress(s, "a-squat", 1));
+  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "a-squat").level, 1);
+  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "a-squat", 1); });
+  assert.equal(L.progressLevel(st.state, "a-squat"), L.MAX_LOAD_LEVEL);
+  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "a-squat", -1); });
+  assert.equal(L.progressLevel(st.state, "a-squat"), 0);
+});

@@ -231,6 +231,13 @@ const handlers = {
   // settings
   pstep(d) { act((s) => { s.profile[d.f] = Math.max(0, Math.round((s.profile[d.f] + +d.v) * 10) / 10); }, "Target updated"); },
   ladder(d) { const on = !!S().clearance.ladder[d.id]; if (!on && L.ladderStepAvailable(S(), L.LADDER.findIndex((l) => l.id === d.id)) === false) return; act((s) => A.setLadder(s, d.id, !on), on ? "Step reverted (later steps re-locked)" : "Step recorded"); },
+  prog(d) {
+    const dir = +d.dir, name = L.LADDERS[d.key] ? "this exercise" : (L.WORKOUTS.A.concat(L.WORKOUTS.B, L.UPPER_BODY).find((e) => e.id === d.key)?.name || "this exercise");
+    if (dir > 0 && !L.canProgress(S(), d.key)) return toast(L.LADDERS[d.key] ? "The next variant isn't flagged cleared + pain-free in Settings yet." : "Already at the top level.", false);
+    const go = () => { closeMenu(); act((s) => A.progress(s, d.key, dir), dir > 0 ? "Progressed" : "Backed off"); };
+    if (dir < 0) return go();
+    showMenu(`Progress ${name}?`, [{ label: "Yes — top of range on every set, 2+ reps left, no symptoms next day", fn: go }]);
+  },
   flagall: () => act((s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)), "All upper-body exercises flagged"),
   ready: (d) => act((s) => A.setReadiness(s, ui.date, d.id), "Readiness updated"),
   exflag(d) { act((s) => A.setExerciseFlag(s, d.id, d.f, !S().clearance.exercises[d.id]?.[d.f]), "Exercise flag updated"); },
