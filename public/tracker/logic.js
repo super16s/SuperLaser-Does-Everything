@@ -6,16 +6,24 @@
 
 export const SLOTS = [
   { id: "breakfast", label: "Breakfast", section: "Morning" },
+  { id: "snack1", label: "Morning snack", section: "Morning" },
   { id: "lunch", label: "Lunch", section: "Midday" },
-  { id: "shake", label: "Shake", section: "Afternoon / evening" },
+  { id: "shake", label: "Afternoon shake", section: "Afternoon / evening" },
   { id: "dinner", label: "Dinner", section: "Afternoon / evening" },
-  { id: "snack", label: "Snack", section: "Afternoon / evening" },
+  { id: "snack", label: "Evening snack", section: "Afternoon / evening" },
+];
+export const PRAYERS = [
+  { id: "morning", label: "Morning prayer" },
+  { id: "evening", label: "Evening prayer" },
 ];
 
 export const DEFAULT_PRESETS = [
   { id: "breakfast-default", slot: "breakfast", label: "Breakfast", calories: 765, protein: 35,
     ingredients: "Oats, soy milk, banana, peanut butter, eggs",
     amounts: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+  { id: "snack1-default", slot: "snack1", label: "Morning snack", calories: 300, protein: 8,
+    ingredients: "Banana and peanut butter",
+    amounts: "1 banana, 2 tbsp peanut butter" },
   { id: "lunch-default", slot: "lunch", label: "Lunch", calories: 800, protein: 50,
     ingredients: "Chicken and rice, beans, vegetables",
     amounts: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
@@ -247,22 +255,27 @@ export const PAIN = {
 
 // section → rendering group. derive tells the UI where the real control lives.
 export const CHECKLIST = [
+  // Morning (same order as the Today screen)
+  { id: "prayer-am", section: "Morning", label: "Morning prayer", derive: { type: "prayer", which: "morning" } },
   { id: "weigh", section: "Morning", label: "Weighed in (optional)", derive: { type: "weight" } },
+  { id: "sleep", section: "Morning", label: "Sleep recorded", derive: { type: "sleep" } },
   { id: "m-breakfast", section: "Morning", label: "Breakfast completed", derive: { type: "meal", slot: "breakfast" } },
+  { id: "m-snack1", section: "Morning", label: "Morning snack completed", derive: { type: "meal", slot: "snack1" } },
   { id: "creatine", section: "Morning", label: "Creatine (3–5 g) taken", derive: { type: "manual" } },
   { id: "liver", section: "Morning", label: "Liver capsules taken", derive: { type: "manual" } },
   { id: "pain-am", section: "Morning", label: "Morning pain check completed", derive: { type: "pain", tod: "morning" } },
   { id: "m-lunch", section: "Midday", label: "Lunch completed", derive: { type: "meal", slot: "lunch" } },
   { id: "water1", section: "Midday", label: "Water check 1 completed", derive: { type: "hydration", n: 1 } },
   { id: "workout", section: "Midday", label: "Workout completed", derive: { type: "workout" }, scheduledOnly: true },
-  { id: "m-shake", section: "Afternoon / evening", label: "Weight-gain shake completed", derive: { type: "meal", slot: "shake" } },
+  { id: "m-shake", section: "Afternoon / evening", label: "Afternoon shake completed", derive: { type: "meal", slot: "shake" } },
   { id: "m-dinner", section: "Afternoon / evening", label: "Dinner completed", derive: { type: "meal", slot: "dinner" } },
-  { id: "m-snack", section: "Afternoon / evening", label: "Greek yogurt snack completed", derive: { type: "meal", slot: "snack" } },
+  { id: "m-snack", section: "Afternoon / evening", label: "Evening snack completed", derive: { type: "meal", slot: "snack" } },
   { id: "water2", section: "Afternoon / evening", label: "Water check 2 completed", derive: { type: "hydration", n: 2 } },
   { id: "yoga", section: "Afternoon / evening", label: "Evening yoga (8 minutes) completed", derive: { type: "yoga" } },
   { id: "meditation", section: "Afternoon / evening", label: "Meditation (4 minutes) completed", derive: { type: "meditation" } },
   { id: "pain-pm", section: "Afternoon / evening", label: "Evening pain check completed", derive: { type: "pain", tod: "evening" } },
   { id: "sleep-plan", section: "Afternoon / evening", label: "Sleep plan confirmed", derive: { type: "manual" } },
+  { id: "prayer-pm", section: "Afternoon / evening", label: "Evening prayer", derive: { type: "prayer", which: "evening" } },
 ];
 export const CHECK_STATUSES = [
   { id: "done", label: "Done" }, { id: "partial", label: "Partial" },
@@ -287,6 +300,7 @@ export function defaultReminders() {
   return [
     mk("weigh", "weighin", "Morning weigh-in", "07:15", all),
     mk("meal-breakfast", "meal", "Breakfast", "07:30", all),
+    mk("meal-snack1", "meal", "Morning snack", "10:00", all),
     mk("meal-lunch", "meal", "Lunch", "12:30", all),
     mk("meal-shake", "meal", "Weight-gain shake", "15:30", all),
     mk("meal-dinner", "meal", "Dinner", "18:30", all),
@@ -557,6 +571,8 @@ export function derivedStatus(state, date, item) {
     case "meal": { const m = day.meals?.[d.slot]; return !m ? null : m.status; }
     case "weight": return day.weight ? "done" : null;
     case "hydration": return day.hydrationChecks?.[d.n] ? "done" : null;
+    case "sleep": return day.sleepBand ? "done" : null;
+    case "prayer": return day.prayer?.[d.which]?.status ?? null;
     case "pain": {
       const rows = painRows(state, date, d.tod);
       if (!rows.length) return null;

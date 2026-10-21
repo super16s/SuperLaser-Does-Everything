@@ -5,7 +5,7 @@
 import {
   DEFAULT_PRESETS, DEFAULT_BOOSTERS, defaultReminders, REMINDER_CATEGORIES, YOGA_STAGES,
   ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN,
-  LEGACY_PRESETS, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
+  SLOTS, LEGACY_PRESETS, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
 } from "./logic.js";
 
 const KEY = "superlaser-tracker-v1";
@@ -14,8 +14,8 @@ const MAX_UNDO = 25;
 export function defaultState(now = new Date()) {
   return {
     version: 1,
-    nutritionVersion: 4,
-    profile: { startingWeight: 159, goalWeight: 174, calorieTarget: 2850, proteinTarget: 150, startDate: ymd(now), timezone: localTz() },
+    nutritionVersion: 5,
+    profile: { startingWeight: 159, goalWeight: 174, calorieTarget: 3100, proteinTarget: 150, startDate: ymd(now), timezone: localTz() },
     mealPresets: structuredClone(DEFAULT_PRESETS),
     boosters: structuredClone(DEFAULT_BOOSTERS),
     reminders: defaultReminders(),
@@ -31,14 +31,22 @@ export function defaultState(now = new Date()) {
 
 function normalize(s) {
   const d = defaultState();
-  const migrateNutrition = s.nutritionVersion !== 4;
-  const out = { ...d, ...s, nutritionVersion: 4 };
+  const migrateNutrition = s.nutritionVersion !== 5;
+  const out = { ...d, ...s, nutritionVersion: 5 };
   for (const k of ["profile", "reminderCategories", "reminderState"]) out[k] = { ...d[k], ...(s[k] || {}) };
   delete out.clearance; // legacy: clinician-clearance gates were removed
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};
   for (const k of ["days", "weeklyReviews", "lists", "progression"]) out[k] ||= {};
   for (const k of ["mealPresets", "boosters", "reminders", "pain"]) if (!Array.isArray(out[k])) out[k] = d[k];
+  // Every meal slot must have at least one preset (e.g. the morning snack added in v5).
+  for (const slot of SLOTS) if (!out.mealPresets.some((p) => p.slot === slot.id)) out.mealPresets.push(structuredClone(d.mealPresets.find((p) => p.slot === slot.id)));
+  if (!out.reminders.some((r) => r.id === "meal-snack1")) {
+    const r = d.reminders.find((x) => x.id === "meal-snack1");
+    if (r) out.reminders.push(structuredClone(r));
+  }
   if (migrateNutrition) {
+    // v5 adds a morning snack, so a full day is ~3,125 kcal: lift the default target only if it was never changed.
+    if (s.profile?.calorieTarget === 2850) out.profile.calorieTarget = 3100;
     // Swap in the current breakfast / shake only where the user never edited an earlier default.
     for (const nd of d.mealPresets) {
       const legacy = LEGACY_PRESETS[nd.id], i = out.mealPresets.findIndex((p) => p.id === nd.id);
@@ -226,6 +234,13 @@ export const actions = {
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
+  setPrayer(s, date, which, status) {
+    const d = day(s, date);
+    d.prayer ||= {};
+    if (!status || d.prayer[which]?.status === status) delete d.prayer[which]; else d.prayer[which] = { status, ...stamp() };
+    if (!Object.keys(d.prayer).length) delete d.prayer;
+    prune(s, date);
+  },
   setWalk(s, date, minutes) {
     const d = day(s, date);
     if (!minutes || d.walk?.minutes === minutes) delete d.walk; else d.walk = { minutes, ...stamp() };

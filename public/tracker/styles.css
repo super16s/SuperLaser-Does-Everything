@@ -220,3 +220,26 @@ body { padding-bottom: 104px; }
 details.card > summary { border-radius: 12px; }
 .chart svg { border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } button:hover:not([aria-disabled="true"]), button:active:not([aria-disabled="true"]) { transform: none; } }
+
+/* ---- Today: prayer buttons + pixel celebrations ---- */
+.card.prayer { padding: 10px; }
+.card.prayer button.giant { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.pxicon { image-rendering: pixelated; display: block; flex: none; }
+.cele { position: fixed; z-index: 45; pointer-events: none; overflow: hidden; border-radius: var(--radius); }
+.cele .spr { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 6px rgba(16, 24, 40, .35)); }
+.cele i { position: absolute; width: 7px; height: 7px; opacity: 0; image-rendering: pixelated; }
+@media (prefers-reduced-motion: no-preference) {
+  .cele::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 62%); animation: celeglow 1.3s ease-out forwards; }
+  .cele.prayer::before { background: radial-gradient(circle at 50% 50%, rgba(255, 209, 102, .55), transparent 65%); }
+  .cele.moon::before { background: radial-gradient(circle at 50% 50%, rgba(80, 100, 190, .45), transparent 65%); }
+  .cele .spr { animation: celepop 1.4s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+  .cele.scale .spr { animation: celeswing 1.4s ease-in-out forwards; }
+  .cele.moon .spr, .cele.prayer .spr, .cele.bowl .spr, .cele.yogurt .spr { animation: celefloat 1.6s ease-out forwards; }
+  .cele i { animation: celeparticle 1.1s ease-out forwards; }
+  @keyframes celepop { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -62%) scale(1); opacity: 0; } }
+  @keyframes celefloat { 0% { transform: translate(-50%, -30%) scale(.4); opacity: 0; } 30% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -95%) scale(1); opacity: 0; } }
+  @keyframes celeswing { 0% { transform: translate(-50%, -50%) scale(.3) rotate(0); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.2) rotate(-14deg); opacity: 1; } 45% { transform: translate(-50%, -50%) scale(1.1) rotate(12deg); } 65% { transform: translate(-50%, -50%) scale(1) rotate(-6deg); } 85% { opacity: 1; } 100% { transform: translate(-50%, -62%) rotate(0); opacity: 0; } }
+  @keyframes celeparticle { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; } }
+  @keyframes celeglow { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+}
+@media (prefers-reduced-motion: reduce) { .cele { display: none; } }

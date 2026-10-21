@@ -14,10 +14,10 @@ test("calendar assumptions used by the tests", () => {
   assert.equal(L.weekStartOf(SUN), MON);
 });
 
-test("all five meals Full → 2,825 kcal / 166 g (v4 presets)", () => {
+test("all six meals Full → 3,125 kcal / 174 g (v5 presets)", () => {
   const st = fresh();
   for (const slot of L.SLOTS) run(st, (s) => A.setMeal(s, MON, slot.id, 1));
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 2825, protein: 166 });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 3125, protein: 174 });
 });
 
 test("half lunch → 400 kcal / 25 g; untapping removes it", () => {
@@ -225,7 +225,7 @@ test("nutrition migration updates untouched older presets only, and keeps user e
   assert.equal(get(a, "breakfast-default").calories, 765);
   assert.match(get(a, "breakfast-default").ingredients, /soy milk/);
   assert.equal(get(a, "shake-default").calories, 999);
-  assert.equal(a.state.nutritionVersion, 4);
+  assert.equal(a.state.nutritionVersion, 5);
 
   const v2 = structuredClone(base); // full-scoop version that shipped briefly
   setPreset(v2, "shake-default", L.LEGACY_PRESETS["shake-default"][1]);
@@ -504,4 +504,44 @@ test("every screen renders without throwing, on every kind of day, in both worko
   assert.match(V.workout(st.state, { ...base, date: MON }), /Guided: tap through/);
   assert.match(V.workout(st.state, { ...base, date: L.addDays(MON, 5) }), /Today's walk/);
   assert.match(V.workout(st.state, { ...base, date: TUE }), /class="card"><h2>Walk/);
+});
+
+test("v5 migration: adds the morning snack preset + reminder; raises an untouched 2,850 target only", () => {
+  const base = JSON.parse(createStore(mem()).exportJson());
+  const asV4 = (patch = {}) => {
+    const o = structuredClone(base); o.nutritionVersion = 4;
+    o.mealPresets = o.mealPresets.filter((p) => p.slot !== "snack1");
+    o.reminders = o.reminders.filter((r) => r.id !== "meal-snack1");
+    o.profile.calorieTarget = 2850; Object.assign(o.profile, patch);
+    const st = createStore(mem()); st.importJson(JSON.stringify(o)); return st.state;
+  };
+  const a = asV4();
+  assert.ok(a.mealPresets.some((p) => p.slot === "snack1" && p.calories === 300));
+  assert.ok(a.reminders.some((r) => r.id === "meal-snack1" && r.time === "10:00"));
+  assert.equal(a.profile.calorieTarget, 3100);
+  assert.equal(asV4({ calorieTarget: 2950 }).profile.calorieTarget, 2950); // user's own number is kept
+  assert.equal(L.SLOTS.map((x) => x.id).join(), "breakfast,snack1,lunch,shake,dinner,snack");
+});
+
+test("prayer: tap logs, same tap clears, feeds the checklist; sleep and weight feed it too", () => {
+  const st = fresh();
+  const item = (id) => L.CHECKLIST.find((i) => i.id === id);
+  assert.equal(L.checklistStatus(st.state, MON, item("prayer-am")), null);
+  run(st, (s) => A.setPrayer(s, MON, "morning", "done"));
+  assert.equal(L.checklistStatus(st.state, MON, item("prayer-am")), "done");
+  assert.equal(L.checklistStatus(st.state, MON, item("prayer-pm")), null);
+  assert.equal(L.checklistStatus(st.state, TUE, item("prayer-am")), null);
+  run(st, (s) => A.setPrayer(s, MON, "evening", "skipped"));
+  assert.equal(L.checklistStatus(st.state, MON, item("prayer-pm")), "skipped");
+  run(st, (s) => A.setPrayer(s, MON, "morning", "done"));
+  assert.equal(L.getDay(st.state, MON).prayer.morning, undefined);
+  run(st, (s) => { A.setSleep(s, MON, "7-8"); A.setWeight(s, MON, 159); A.setMeal(s, MON, "snack1", 1); });
+  assert.deepEqual(["sleep", "weigh", "m-snack1"].map((id) => L.checklistStatus(st.state, MON, item(id))), ["done", "done", "done"]);
+});
+
+test("checklist follows the Today order: prayer, weight, sleep, breakfast, snack, lunch, shake, dinner, snack, prayer", () => {
+  const order = L.CHECKLIST.map((i) => i.id);
+  const seq = ["prayer-am", "weigh", "sleep", "m-breakfast", "m-snack1", "m-lunch", "m-shake", "m-dinner", "m-snack", "prayer-pm"];
+  let at = -1;
+  for (const id of seq) { const i = order.indexOf(id); assert.ok(i > at, `${id} out of order`); at = i; }
 });

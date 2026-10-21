@@ -3,7 +3,7 @@
 
 import * as L from "./logic.js";
 import { lineChart, barChart } from "./charts.js";
-import { scene } from "./sprites.js";
+import { scene, pixelIcon, MEAL_KIND } from "./sprites.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const attrs = (o) => Object.entries(o).map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ");
@@ -54,7 +54,7 @@ function mealCard(S, ui, slot) {
   const cur = log ? log.multiplier : undefined;
   const chips = L.PORTIONS.map((o) => btn(o.label, { a: "meal", slot: slot.id, v: o.value }, { on: cur === o.value })).join("");
   const logged = log ? (log.multiplier > 0 ? `Logged: ${nf(log.calories * log.multiplier)} kcal · ${nf(log.protein * log.multiplier)} g protein` : "Logged: skipped (0 kcal)") : "Not logged";
-  return `<section class="card" id="meal-${slot.id}" aria-label="${esc(slot.label)}">
+  return `<section class="card" id="meal-${slot.id}" data-cele="${MEAL_KIND[slot.id]}" data-done="${log && log.multiplier > 0 ? 1 : 0}" aria-label="${esc(slot.label)}">
     <div class="row between"><strong>${esc(p.label).toUpperCase()} · ${nf(p.calories)} kcal · ${nf(p.protein)}g protein</strong></div>
     <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
@@ -74,6 +74,13 @@ function checklist(S, ui) {
   }).join("")}</ul>`).join("") + `<p class="muted small">Tap an item to toggle or open it. Long-press for Skipped / Partial / Substituted. * = set by hand. “Not logged” never means skipped.</p>`;
 }
 
+function prayerCard(S, ui, p) {
+  const st = L.getDay(S, ui.date).prayer?.[p.id]?.status;
+  const label = st === "done" ? `${p.label} ✓` : st === "skipped" ? `${p.label} (skipped)` : p.label;
+  return `<section class="card prayer" id="prayer-${p.id}" data-cele="prayer" data-done="${st === "done" ? 1 : 0}" aria-label="${esc(p.label)}">
+    <button type="button" class="primary giant" data-a="prayer" data-w="${p.id}" data-long="1" data-fk="prayer-${p.id}" aria-pressed="${st === "done"}" aria-label="${esc(p.label)}: ${STATE_TEXT[st || "none"]}. Tap to log; long-press for Skipped.">${pixelIcon("prayer", 3)}<span>${label}</span></button></section>`;
+}
+
 export function today(S, ui) {
   const date = ui.date, tot = L.mealTotals(S, date), day = L.getDay(S, date);
   const nx = L.nextReminder(S, new Date());
@@ -81,22 +88,26 @@ export function today(S, ui) {
   const last = lastWeight(S, date);
   const wPresets = [-2, -1, 0, 1, 2].map((d) => { const v = Math.round((last + d) * 10) / 10; return btn(`${v.toFixed(1)}`, { a: "wset", v }, { on: base === v, aria: `Set ${v.toFixed(1)} pounds` }); }).join("");
   const boosters = S.boosters.map((b) => btn(`+${b.calories} kcal`, { a: "booster", id: b.id }, { disabled: !b.foods.trim(), aria: b.foods.trim() ? `Add ${b.calories} kcal: ${b.foods}` : `${b.calories} kcal booster, no foods assigned. Assign in Settings.` })).join("");
-  return `<section class="card" aria-label="Daily totals"><h2>Today's totals</h2><div class="stack" aria-live="polite">
-      ${progress("Calories", tot.calories, S.profile.calorieTarget, " kcal", `${date}|cal`)}${progress("Protein", tot.protein, S.profile.proteinTarget, " g", `${date}|pro`)}</div>
-      <p class="muted small" style="margin:8px 0 0">Totals count only meals you tapped. Targets are estimates.</p>
-      ${nx ? `<p class="small" style="margin:8px 0 0">Next reminder: <strong>${esc(nx.reminder.label)}</strong> · ${nx.at.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</p>` : ""}</section>
-    ${L.SLOTS.map((s) => mealCard(S, ui, s)).join("")}
-    <section class="card"><h2>Calorie boosters</h2><div class="row">${boosters}</div>
-      ${(day.boosters || []).map((b) => `<div class="row between small" style="margin-top:6px"><span>+${b.calories} kcal · ${esc(b.foods)}</span>${btn("Remove", { a: "rmbooster", id: b.id }, { cls: "link" })}</div>`).join("")}
-      <p class="muted small">Boosters need foods assigned in Settings; unassigned ones add nothing.</p></section>
-    <section class="card" id="weight" aria-label="Weight"><h2>Morning weight</h2>
+  const meal = (id) => mealCard(S, ui, L.SLOTS.find((x) => x.id === id));
+  const weightCard = `<section class="card" id="weight" data-cele="scale" data-done="${w ? 1 : 0}" aria-label="Weight"><h2>Morning weight</h2>
       <div class="row between"><span class="big">${base.toFixed(1)} lb</span><span class="muted">${w ? `Logged ${w.lb.toFixed(1)} lb` : "Not logged"}</span></div>
       <div class="row" style="margin:8px 0">${btn("−0.5", { a: "wstep", v: -0.5 }, { aria: "Minus half a pound" })}${btn("+0.5", { a: "wstep", v: 0.5 }, { aria: "Plus half a pound" })}
         <div class="chips" role="group" aria-label="Preset weights near last reading" style="flex:1">${wPresets}</div></div>
-      <div class="row">${btn(w && w.lb === base ? "Logged ✓" : "Log weight", { a: "wlog" }, { cls: "primary" })}${w ? btn("Clear", { a: "wclear" }) : ""}</div></section>
-    <section class="card"><h2>Sleep last night</h2><div class="chips" role="group" aria-label="Sleep duration">
+      <div class="row">${btn(w && w.lb === base ? "Logged ✓" : "Log weight", { a: "wlog" }, { cls: "primary" })}${w ? btn("Clear", { a: "wclear" }) : ""}</div></section>`;
+  const sleepCard = `<section class="card" id="sleep" data-cele="moon" data-done="${day.sleepBand ? 1 : 0}"><h2>Sleep last night</h2><div class="chips" role="group" aria-label="Sleep duration">
       ${L.SLEEP_BANDS.map((b) => btn(b.label, { a: "sleep", v: b.id }, { on: day.sleepBand === b.id })).join("")}</div>
-      <p class="muted small">Target 7–9 h.${day.sleepBand ? (L.SLEEP_ON_TARGET.includes(day.sleepBand) ? " On target." : " Outside the 7–9 h target.") : ""}</p></section>
+      <p class="muted small">Target 7–9 h.${day.sleepBand ? (L.SLEEP_ON_TARGET.includes(day.sleepBand) ? " On target." : " Outside the 7–9 h target.") : ""}</p></section>`;
+  const totalsCard = `<section class="card" aria-label="Daily totals"><h2>Today's totals</h2><div class="stack" aria-live="polite">
+      ${progress("Calories", tot.calories, S.profile.calorieTarget, " kcal", `${date}|cal`)}${progress("Protein", tot.protein, S.profile.proteinTarget, " g", `${date}|pro`)}</div>
+      <p class="muted small" style="margin:8px 0 0">Totals count only meals you tapped. Targets are estimates.</p>
+      ${nx ? `<p class="small" style="margin:8px 0 0">Next reminder: <strong>${esc(nx.reminder.label)}</strong> · ${nx.at.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</p>` : ""}</section>`;
+  const boosterCard = `<section class="card"><h2>Calorie boosters</h2><div class="row">${boosters}</div>
+      ${(day.boosters || []).map((b) => `<div class="row between small" style="margin-top:6px"><span>+${b.calories} kcal · ${esc(b.foods)}</span>${btn("Remove", { a: "rmbooster", id: b.id }, { cls: "link" })}</div>`).join("")}
+      <p class="muted small">Boosters need foods assigned in Settings; unassigned ones add nothing.</p></section>`;
+  // The day, in order: prayer, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then prayer.
+  return `${prayerCard(S, ui, L.PRAYERS[0])}${weightCard}${sleepCard}${totalsCard}
+    ${["breakfast", "snack1", "lunch", "shake", "dinner", "snack"].map(meal).join("")}
+    ${boosterCard}${prayerCard(S, ui, L.PRAYERS[1])}
     <section class="card"><h2>Daily checklist</h2>${checklist(S, ui)}</section>
     ${lists(S, ui)}`;
 }

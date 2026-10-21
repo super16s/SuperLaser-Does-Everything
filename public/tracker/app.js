@@ -3,11 +3,12 @@
 import { createStore, actions as A } from "./store.js";
 import * as L from "./logic.js";
 import * as V from "./views.js";
+import { CELE, pixelIcon } from "./sprites.js";
 import { startScheduler, snooze, skipToday, notify, askPermission } from "./reminders.js";
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, rest: null, restLen: 60, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, rest: null, restLen: 60, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
 ui.date = L.ymd(); // always open on today
 const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen, guided: ui.guided })); } catch {} };
@@ -57,6 +58,7 @@ function render() {
   $("#tabs").innerHTML = V.tabs(ui);
   renderBanners();
   animateBars();
+  celebrations();
   window.scrollTo(0, y);
   if (focusKey) document.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
   tickTimers();
@@ -102,6 +104,33 @@ function animateBars() {
   if (g) { if (motion && ui.prevG && ui.prevG !== g.dataset.gkey) g.classList.add("enter"); ui.prevG = g.dataset.gkey; }
   if (ui.popFk) { document.querySelector(`[data-fk="${CSS.escape(ui.popFk)}"]`)?.classList.add("tap-pop"); ui.popFk = null; }
   if (confetti) { launchConfetti(); try { navigator.vibrate?.([30, 40, 60]); } catch {} }
+}
+// Each Today action plays its own little pixel celebration when it flips to done:
+// the card's icon pops and particles burst or rise around it.
+function celebrations() {
+  if (reduceMotion()) return;
+  document.querySelectorAll("[data-cele]").forEach((el) => {
+    const key = `${ui.date}|${el.id}`, done = el.dataset.done === "1", prev = ui.prevCele[key];
+    ui.prevCele[key] = done;
+    if (prev === false && done) celebrate(el, el.dataset.cele);
+  });
+}
+function celebrate(el, kind) {
+  const cfg = CELE[kind], r = el.getBoundingClientRect();
+  if (!cfg || !r.width) return;
+  const box = document.createElement("div");
+  box.className = `cele ${kind} ${cfg.mode}`; box.setAttribute("aria-hidden", "true");
+  box.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  box.innerHTML = `<div class="spr">${pixelIcon(kind, 5)}</div>`;
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement("i"), a = (Math.PI * 2 * i) / 18 + Math.random() * 0.4, d = 50 + Math.random() * 70;
+    const dx = cfg.mode === "burst" ? Math.cos(a) * d : (Math.random() - 0.5) * 90, dy = cfg.mode === "burst" ? Math.sin(a) * d * 0.7 : -30 - Math.random() * 70;
+    p.style.cssText = `background:${cfg.colors[i % cfg.colors.length]};left:50%;top:50%;--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-delay:${(Math.random() * 0.25).toFixed(2)}s`;
+    box.append(p);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 1900);
+  try { navigator.vibrate?.(20); } catch {}
 }
 function launchConfetti() {
   const box = document.createElement("div");
@@ -170,6 +199,10 @@ function openLongMenu(t) {
     const ex = L.ALL_EXERCISES().find((e) => e.id === d.ex);
     const has = !!L.getDay(S(), date).sets?.[L.setKey(d.ex, +d.i)];
     showMenu(`${ex.name} — set ${+d.i + 1}`, statuses((st) => act((s) => A.setSet(s, date, d.ex, +d.i, st), `Set ${+d.i + 1}: ${st || "cleared"}`), null, has).map((o) => ({ ...o, fn: () => { closeMenu(); o.fn(); } })));
+  } else if (d.a === "prayer") {
+    const lab = L.PRAYERS.find((p) => p.id === d.w).label, has = !!L.getDay(S(), date).prayer?.[d.w];
+    const ops = [{ label: "Done", st: "done" }, { label: "Skipped", st: "skipped" }, ...(has ? [{ label: "Clear (Not logged)", st: null }] : [])];
+    showMenu(lab, ops.map((o) => ({ label: o.label, fn: () => { closeMenu(); act((s) => A.setPrayer(s, date, d.w, o.st), `${lab}: ${o.st || "cleared"}`); } })));
   } else if (d.a === "stage") {
     const st = L.YOGA_STAGES.find((s) => s.id === d.id), has = !!L.getDay(S(), date).yogaStages?.[d.id];
     showMenu(st.label, statuses((status) => act((s) => A.setYogaStage(s, date, d.id, status), `${st.label}: ${status || "cleared"}`), null, has).map((o) => ({ ...o, fn: () => { closeMenu(); o.fn(); } })));
@@ -216,6 +249,8 @@ const handlers = {
     if (t === "manual") return act((s) => A.setCheck(s, ui.date, item.id, "done"), item.label);
     if (t === "meal") return document.getElementById(`meal-${item.derive.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (t === "weight") return document.getElementById("weight")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (t === "sleep") return document.getElementById("sleep")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (t === "prayer") return document.getElementById(`prayer-${item.derive.which}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (t === "pain") { ui.painTod = item.derive.tod; return goTab("recovery"); }
     if (t === "workout") return goTab("workout");
     return goTab("recovery");
@@ -258,6 +293,11 @@ const handlers = {
   },
   wtxt() { const x = L.workoutExport(S(), ui.date); x.hasData ? download(`workout-${ui.date}.txt`, x.text, "text/plain") : toast("Nothing logged for this day yet.", false); },
   wcsv() { const x = L.workoutExport(S(), ui.date); x.hasData ? download(`workout-${ui.date}.csv`, x.csv, "text/csv") : toast("Nothing logged for this day yet.", false); },
+  prayer(d) {
+    if (suppress) return;
+    const label = L.PRAYERS.find((p) => p.id === d.w).label, had = L.getDay(S(), ui.date).prayer?.[d.w]?.status === "done";
+    act((s) => A.setPrayer(s, ui.date, d.w, "done"), had ? `${label} cleared` : `${label} logged`);
+  },
   restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
   restcancel() { ui.rest = null; render(); },
   provoked() { ui.painTod = "after"; ui.rest = null; toast("Stop the workout. Log how it feels below.", false); goTab("recovery"); },
