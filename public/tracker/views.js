@@ -3,6 +3,7 @@
 
 import * as L from "./logic.js";
 import { lineChart, barChart } from "./charts.js";
+import { scene } from "./sprites.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const attrs = (o) => Object.entries(o).map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ");
@@ -130,6 +131,7 @@ function loadRow(S, ui, e) {
   const draft = ui.loadDraft[e.id] ?? logged ?? last?.lb ?? 0;
   const lastTxt = last ? `Last: ${last.lb} lb (${shortDate(last.date)})${best && best.lb > last.lb ? ` · Best: ${best.lb} lb` : ""}` : "No load logged yet";
   return `<div class="row small" style="margin:6px 0"><span class="muted">${lastTxt}</span></div>
+    <div class="row small"><span class="muted">Weight (lb), tap to adjust:</span></div>
     <div class="row small"><strong aria-live="polite">${draft} lb${logged != null && logged === draft ? " ✓" : ""}</strong>
       ${L.LOAD_STEPS.map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "lstep", ex: e.id, v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} pounds for ${e.name}` })).join("")}
       ${btn(logged != null && logged === draft ? "Logged" : "Log load", { a: "llog", ex: e.id }, { cls: "primary", aria: `Log ${draft} pounds for ${e.name}` })}${logged != null ? btn("Clear", { a: "lclear", ex: e.id }, { cls: "link" }) : ""}</div>`;
@@ -159,7 +161,7 @@ export function workout(S, ui) {
     const wkPct = prog.total ? Math.round((100 * prog.done) / prog.total) : 0;
     const wkAd = L.adherence(S, L.weekStartOf(date), L.addDays(L.weekStartOf(date), 6), L.ymd());
     const headline = `<div class="hero${wkPct === 100 ? " complete" : ""}"><div class="row between"><strong>${wkPct === 100 ? "🎉 Workout complete" : "Today's workout"}</strong><span><strong>${prog.done}</strong> / ${prog.total} sets · ${wkPct}%</span></div>
-      <div class="pbar" role="progressbar" aria-label="Workout progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${wkPct}"><div class="pfill" data-key="${date}|wk" data-pct="${wkPct}" style="width:${wkPct}%"></div></div>
+      ${scene(wkPct, `${date}|wk`)}
       ${wkAd.scheduled ? `<div class="muted small">This week: ${wkAd.completed} of ${wkAd.scheduled} workouts done</div>` : ""}</div>`;
     const modeToggle = `<div class="chips" role="group" aria-label="Workout view" style="margin:8px 0">${btn("Guided: tap through", { a: "gmode", v: 1 }, { on: ui.guided })}${btn("List: all sets", { a: "gmode", v: 0 }, { on: !ui.guided })}</div>`;
     body = `${headline}${wave}${readiness}${modeToggle}

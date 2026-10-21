@@ -75,6 +75,10 @@ const reduceMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)
 
 // Views are re-rendered from scratch on every tap, so a bar would never animate by
 // itself. Remember each bar's last value and grow it from there to the new one.
+function setPos(el, p) {
+  if (el.dataset.prop === "push") el.style.left = `calc((100% - 120px) * ${p / 100})`;
+  else el.style.width = `${p}%`;
+}
 function animateBars() {
   const motion = !reduceMotion();
   let confetti = false;
@@ -82,12 +86,14 @@ function animateBars() {
     const key = el.dataset.key, to = +el.dataset.pct, seen = key in ui.prevPct, from = seen ? ui.prevPct[key] : to;
     ui.prevPct[key] = to;
     if (motion && from !== to) {
-      el.style.width = `${from}%`;
-      void el.offsetWidth; // commit the start width, then transition to the target
-      el.style.width = `${to}%`;
+      setPos(el, from);
+      void el.offsetWidth; // commit the start position, then transition to the target
+      setPos(el, to);
+      const sc = el.closest(".scene");
+      if (sc && to > from) { sc.classList.add("walking"); setTimeout(() => sc.classList.remove("walking"), 850); }
     }
     if (motion && seen && from < 100 && to === 100) {
-      if (key.endsWith("|wk")) confetti = true;
+      if (key.endsWith("|wk")) { confetti = true; el.closest(".scene")?.classList.add("celebrate"); }
       else if (/\|ex-/.test(key)) el.closest(".exblock, .seg")?.classList.add("pop");
       else el.closest(".card")?.classList.add("pop");
     }
