@@ -13,8 +13,8 @@ export const SLOTS = [
   { id: "snack", label: "Evening snack", section: "Afternoon / evening" },
 ];
 export const PRAYERS = [
-  { id: "morning", label: "Morning Gratitude" },
-  { id: "evening", label: "Evening Conscious Connection" },
+  { id: "morning", label: "Upon Awakening" },
+  { id: "evening", label: "Retiring at Night" },
 ];
 
 export const DEFAULT_PRESETS = [
@@ -294,26 +294,26 @@ export const PAIN = {
 // section → rendering group. derive tells the UI where the real control lives.
 export const CHECKLIST = [
   // Morning (same order as the Today screen)
-  { id: "prayer-am", section: "Morning", label: "Morning Gratitude", derive: { type: "prayer", which: "morning" } },
-  { id: "weigh", section: "Morning", label: "Weighed in (optional)", derive: { type: "weight" } },
-  { id: "sleep", section: "Morning", label: "Sleep recorded", derive: { type: "sleep" } },
-  { id: "m-breakfast", section: "Morning", label: "Breakfast completed", derive: { type: "meal", slot: "breakfast" } },
-  { id: "m-snack1", section: "Morning", label: "Morning snack completed", derive: { type: "meal", slot: "snack1" } },
-  { id: "creatine", section: "Morning", label: "Creatine (3–5 g) taken", derive: { type: "manual" } },
-  { id: "liver", section: "Morning", label: "Liver capsules taken", derive: { type: "manual" } },
-  { id: "pain-am", section: "Morning", label: "Morning pain check completed", derive: { type: "pain", tod: "morning" } },
-  { id: "m-lunch", section: "Midday", label: "Lunch completed", derive: { type: "meal", slot: "lunch" } },
-  { id: "water1", section: "Midday", label: "Water check 1 completed", derive: { type: "hydration", n: 1 } },
-  { id: "workout", section: "Midday", label: "Workout completed", derive: { type: "workout" }, scheduledOnly: true },
-  { id: "m-shake", section: "Afternoon / evening", label: "Afternoon shake completed", derive: { type: "meal", slot: "shake" } },
-  { id: "m-dinner", section: "Afternoon / evening", label: "Dinner completed", derive: { type: "meal", slot: "dinner" } },
-  { id: "m-snack", section: "Afternoon / evening", label: "Evening snack completed", derive: { type: "meal", slot: "snack" } },
-  { id: "water2", section: "Afternoon / evening", label: "Water check 2 completed", derive: { type: "hydration", n: 2 } },
-  { id: "yoga", section: "Afternoon / evening", label: "Evening yoga (8 minutes) completed", derive: { type: "yoga" } },
-  { id: "meditation", section: "Afternoon / evening", label: "Meditation (4 minutes) completed", derive: { type: "meditation" } },
-  { id: "pain-pm", section: "Afternoon / evening", label: "Evening pain check completed", derive: { type: "pain", tod: "evening" } },
-  { id: "sleep-plan", section: "Afternoon / evening", label: "Sleep plan confirmed", derive: { type: "manual" } },
-  { id: "prayer-pm", section: "Afternoon / evening", label: "Evening Conscious Connection", derive: { type: "prayer", which: "evening" } },
+  { id: "prayer-am", section: "Morning", label: "Upon Awakening", derive: { type: "prayer", which: "morning" } },
+  { id: "weigh", section: "Morning", label: "Weigh-in", derive: { type: "weight" } },
+  { id: "sleep", section: "Morning", label: "Sleep", derive: { type: "sleep" } },
+  { id: "m-breakfast", section: "Morning", label: "Breakfast", derive: { type: "meal", slot: "breakfast" } },
+  { id: "m-snack1", section: "Morning", label: "Morning snack", derive: { type: "meal", slot: "snack1" } },
+  { id: "creatine", section: "Morning", label: "Creatine (3–5 g)", derive: { type: "manual" } },
+  { id: "liver", section: "Morning", label: "Liver capsules", derive: { type: "manual" } },
+  { id: "pain-am", section: "Morning", label: "Morning pain check", derive: { type: "pain", tod: "morning" } },
+  { id: "m-lunch", section: "Midday", label: "Lunch", derive: { type: "meal", slot: "lunch" } },
+  { id: "water1", section: "Midday", label: "Water check 1", derive: { type: "hydration", n: 1 } },
+  { id: "workout", section: "Midday", label: "Workout", derive: { type: "workout" }, scheduledOnly: true },
+  { id: "m-shake", section: "Afternoon / evening", label: "Afternoon shake", derive: { type: "meal", slot: "shake" } },
+  { id: "m-dinner", section: "Afternoon / evening", label: "Dinner", derive: { type: "meal", slot: "dinner" } },
+  { id: "m-snack", section: "Afternoon / evening", label: "Evening snack", derive: { type: "meal", slot: "snack" } },
+  { id: "water2", section: "Afternoon / evening", label: "Water check 2", derive: { type: "hydration", n: 2 } },
+  { id: "yoga", section: "Afternoon / evening", label: "Evening yoga (8 min)", derive: { type: "yoga" } },
+  { id: "meditation", section: "Afternoon / evening", label: "Meditation (4 min)", derive: { type: "meditation" } },
+  { id: "pain-pm", section: "Afternoon / evening", label: "Evening pain check", derive: { type: "pain", tod: "evening" } },
+  { id: "sleep-plan", section: "Afternoon / evening", label: "Sleep plan", derive: { type: "manual" } },
+  { id: "prayer-pm", section: "Afternoon / evening", label: "Retiring at Night", derive: { type: "prayer", which: "evening" } },
 ];
 export const CHECK_STATUSES = [
   { id: "done", label: "Done" }, { id: "partial", label: "Partial" },

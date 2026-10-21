@@ -276,5 +276,11 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .grid-btns button[aria-pressed="true"]::before { content: none; }
 
 /* Gratitude / Conscious Connection buttons: label scales so it stays on one line on small phones */
-.card.prayer button.giant { font-size: clamp(.92rem, 4.4vw, 1.3rem); gap: 10px; padding-left: 8px; padding-right: 8px; letter-spacing: -.01em; white-space: nowrap; }
+.card.prayer button.giant { font-size: clamp(1rem, 5.2vw, 1.35rem); gap: 10px; padding-left: 8px; padding-right: 8px; letter-spacing: -.01em; white-space: nowrap; }
 .card.prayer .pxicon { width: 34px; height: 34px; }
+
+/* checklist rows: label on one line, short status at the right */
+.checklist button.item { gap: 8px; }
+.checklist button.item > span:nth-child(2) { flex: 1; min-width: 0; }
+.checklist .state { min-width: 0; white-space: nowrap; text-align: right; font-size: .88rem; }
+@media (max-width: 340px) { .checklist button.item { font-size: .86rem; gap: 5px; } .checklist .state { font-size: .78rem; } .checklist .glyph { width: 1.1em; } }

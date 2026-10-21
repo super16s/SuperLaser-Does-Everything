@@ -13,6 +13,7 @@ export function btn(label, d, { on, cls = "", disabled, long, aria } = {}) {
 }
 const nf = (n) => Math.round(n).toLocaleString("en-US");
 const GLYPH = { done: "✓", partial: "◐", skipped: "⊘", substituted: "⇄", none: "○" };
+const SHORT_STATE = { done: "Done", partial: "Partial", skipped: "Skipped", substituted: "Swapped", none: "Not yet" };
 const STATE_TEXT = { done: "Done", partial: "Partial", skipped: "Skipped", substituted: "Substituted", none: "Not logged" };
 const dateLabel = (d) => L.parseYmd(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 const shortDate = (d) => L.parseYmd(d).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
@@ -70,7 +71,7 @@ function checklist(S, ui) {
     const st = L.checklistStatus(S, ui.date, i) || "none";
     const override = L.getDay(S, ui.date).checks?.[i.id];
     const nav = i.derive.type !== "manual" && i.derive.type !== "hydration";
-    return `<li><button type="button" class="item" data-a="check" data-id="${i.id}" data-long="1" data-fk="check-${i.id}" aria-label="${esc(i.label)}: ${STATE_TEXT[st]}${override ? " (manually set)" : ""}. ${nav ? "Opens the control." : "Tap to toggle; long-press for Skipped, Partial or Substituted."}"><span class="glyph s-${st}" aria-hidden="true">${GLYPH[st]}</span><span style="flex:1">${esc(i.label)}</span><span class="state s-${st}">${STATE_TEXT[st]}${override ? "*" : ""}</span></button></li>`;
+    return `<li><button type="button" class="item" data-a="check" data-id="${i.id}" data-long="1" data-fk="check-${i.id}" aria-label="${esc(i.label)}: ${STATE_TEXT[st]}${override ? " (manually set)" : ""}. ${nav ? "Opens the control." : "Tap to toggle; long-press for Skipped, Partial or Substituted."}"><span class="glyph s-${st}" aria-hidden="true">${GLYPH[st]}</span><span style="flex:1">${esc(i.label)}</span><span class="state s-${st}" aria-hidden="true">${SHORT_STATE[st]}${override ? "*" : ""}</span></button></li>`;
   }).join("")}</ul>`).join("") + `<p class="muted small">Tap an item to toggle or open it. Long-press for Skipped / Partial / Substituted. * = set by hand. “Not logged” never means skipped.</p>`;
 }
 
@@ -121,7 +122,7 @@ export function today(S, ui) {
   const boosterCard = `<section class="card"><h2>Calorie boosters</h2><div class="row">${boosters}</div>
       ${(day.boosters || []).map((b) => `<div class="row between small" style="margin-top:6px"><span>+${b.calories} kcal · ${esc(b.foods)}</span>${btn("Remove", { a: "rmbooster", id: b.id }, { cls: "link" })}</div>`).join("")}
       <p class="muted small">Boosters need foods assigned in Settings; unassigned ones add nothing.</p></section>`;
-  // The day, in order: morning gratitude, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then evening conscious connection.
+  // The day, in order: upon awakening, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then retiring at night.
   return `${prayerCard(S, ui, L.PRAYERS[0])}${weightCard}${sleepCard}${totalsCard}
     ${["breakfast", "snack1", "lunch", "shake", "dinner", "snack"].map(meal).join("")}
     ${extrasCard(S, ui)}${boosterCard}${prayerCard(S, ui, L.PRAYERS[1])}
