@@ -17,19 +17,24 @@ export const DEFAULT_PRESETS = [
     ingredients: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
   { id: "lunch-default", slot: "lunch", label: "Lunch", calories: 800, protein: 50,
     ingredients: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
-  { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 590, protein: 41,
-    ingredients: "1 cup soy milk, 1 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+  { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 530, protein: 29,
+    ingredients: "1 cup soy milk, 1/2 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
   { id: "dinner-default", slot: "dinner", label: "Dinner", calories: 650, protein: 40,
     ingredients: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
   { id: "snack-default", slot: "snack", label: "Greek yogurt snack", calories: 80, protein: 12,
     ingredients: "1/2 cup plain Greek yogurt" },
 ];
 
-// v1 defaults for the two presets that changed in nutrition v2 (dairy-free early
-// in the day + plant protein). Used only to migrate presets the user never edited.
-export const LEGACY_PRESETS_V1 = {
-  "breakfast-default": { label: "Breakfast", calories: 800, protein: 35, ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
-  "shake-default": { label: "Weight-gain shake", calories: 530, protein: 18, ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+// Earlier defaults for presets that changed in later nutrition versions (v1: dairy;
+// v2: full-scoop plant protein). Used only to migrate presets the user never edited.
+export const LEGACY_PRESETS = {
+  "breakfast-default": [
+    { label: "Breakfast", calories: 800, protein: 35, ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+  ],
+  "shake-default": [
+    { label: "Weight-gain shake", calories: 530, protein: 18, ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+    { label: "Plant-protein shake", calories: 590, protein: 41, ingredients: "1 cup soy milk, 1 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
+  ],
 };
 
 export const PORTIONS = [
