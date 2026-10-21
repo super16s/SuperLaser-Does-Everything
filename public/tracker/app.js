@@ -231,11 +231,9 @@ const handlers = {
   // settings
   pstep(d) { act((s) => { s.profile[d.f] = Math.max(0, Math.round((s.profile[d.f] + +d.v) * 10) / 10); }, "Target updated"); },
   prog(d) {
-    const dir = +d.dir, name = L.LADDERS[d.key] ? "this exercise" : (L.ALL_EXERCISES().find((e) => e.id === d.key)?.name || "this exercise");
+    const dir = +d.dir;
     if (dir > 0 && !L.canProgress(S(), d.key)) return toast("Already at the top step.", false);
-    const go = () => { closeMenu(); act((s) => A.progress(s, d.key, dir), dir > 0 ? "Progressed" : "Backed off"); };
-    if (dir < 0) return go();
-    showMenu(`Progress ${name}?`, [{ label: "Yes — top of range on every set, 2+ reps left, no elbow/neck symptoms next day", fn: go }]);
+    act((s) => A.progress(s, d.key, dir), dir > 0 ? "Progressed" : "Backed off");
   },
   ready: (d) => act((s) => A.setReadiness(s, ui.date, d.id), "Readiness updated"),
   rcat: (d) => act((s) => { s.reminderCategories[d.id] = s.reminderCategories[d.id] === false; }, "Reminder category"),
