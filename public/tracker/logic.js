@@ -74,21 +74,21 @@ export const WORKOUTS = {
     ex("a-lunge", "Reverse lunges", 3, "8–12 per leg"),
     ex("a-bridge", "Glute bridges", 3, "15–20"),
     ex("a-calf", "Calf raises", 3, "20"),
-    ex("a-heel", "Supine heel slides", 2, "10 per leg"),
+    ex("a-heel", "Supine heel slides", 2, "10 per leg", { noRamp: true }),
   ],
   B: [
     ex("b-split", "Split squats", 3, "8–12 per leg"),
     ex("b-chair", "Slow chair squats", 3, "12"),
     ex("b-sl-bridge", "Single-leg glute bridges", 3, "8 per leg"),
     ex("b-wall", "Wall sit", 3, "30–45 sec"),
-    ex("b-march", "Supine marching", 2, "12"),
+    ex("b-march", "Supine marching", 2, "12", { noRamp: true }),
   ],
 };
 // Locked until clinician clearance + per-exercise flags (see isExerciseUnlocked).
 // Set/rep numbers are placeholders for a clinician to overwrite, not prescriptions.
 export const UPPER_BODY = [
-  ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true }),
-  ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true }),
+  ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
+  ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
   ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 2, clearanceRequired: true }),
   ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 3, clearanceRequired: true }),
   ex("u-row", "Light rows", 2, "8–12", { phase: 3, clearanceRequired: true }),
@@ -104,7 +104,7 @@ export const READINESS = [
   { id: "nextday", label: "No symptoms the day after my last upper-body session" },
 ];
 
-export const REST_OPTIONS = [45, 60, 90];
+export const REST_OPTIONS = [45, 60, 90, 120, 180];
 
 export const PHASES = [
   { n: 1, name: "Protect", weeks: "1–2", plan: "Three lower-body/core workouts per week; gentle pain-free elbow/wrist movement; no resisted curls", gate: "Everyday movement comfortable; no worsening symptoms" },
@@ -270,12 +270,34 @@ export function isExerciseUnlocked(state, id) {
   const ex = state.clearance.exercises[id];
   return !!(state.clearance.ladder.clearance && ex?.cleared && ex?.painFree);
 }
+// Four-week wave borrowed from the strength plan: add sets for three weeks,
+// then deload back to the base. Upper body ramps more gently than legs. The wave
+// follows the calendar from the start date, so it is only a set-count suggestion
+// and never unlocks anything.
+export const WAVE_LOWER = [0, 1, 2, 0];
+export const WAVE_UPPER = [0, 1, 1, 0];
+export const BLOCK_REPS = ["12–15", "10–12", "8–10", "8–10"];
+export function waveInfo(state, date) {
+  const weeks = Math.max(0, Math.floor(diffDays(date, state.profile.startDate) / 7));
+  const weekInBlock = weeks % 4, block = Math.floor(weeks / 4);
+  const deload = weekInBlock === 3;
+  return {
+    weeks, weekInBlock, block, deload,
+    reps: BLOCK_REPS[Math.min(block, BLOCK_REPS.length - 1)],
+    rir: deload ? "3+ reps in reserve (deload: same weights, fewer sets)" : weekInBlock === 0 ? "about 3 reps in reserve" : "about 2 reps in reserve",
+  };
+}
+export function setsFor(state, date, e) {
+  if (e.noRamp) return e.sets;
+  const wave = e.clearanceRequired ? WAVE_UPPER : WAVE_LOWER;
+  return e.sets + wave[waveInfo(state, date).weekInBlock];
+}
 export function exercisesForDate(state, date) {
   const r = routineForDate(state, date);
   if (!isLoadedRoutine(r)) return [];
   const base = WORKOUTS[r];
   const upper = UPPER_BODY.filter((u) => isExerciseUnlocked(state, u.id));
-  return [...base, ...upper];
+  return [...base, ...upper].map((e) => ({ ...e, sets: setsFor(state, date, e) }));
 }
 export function setKey(exId, i) { return `${exId}#${i}`; }
 export function workoutProgress(state, date) {

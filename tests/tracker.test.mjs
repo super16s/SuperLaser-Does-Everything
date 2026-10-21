@@ -237,3 +237,18 @@ test("readiness ticks are per-day and toggle", () => {
   run(st, (s) => A.setReadiness(s, MON, "rom"));
   assert.equal(L.getDay(st.state, MON).readiness, undefined);
 });
+
+test("set wave: +0/+1/+2 then deload, upper gentler, rehab items fixed", () => {
+  const st = fresh();
+  const squat = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "a-squat").sets;
+  const wk = (n) => L.addDays(MON, 7 * n);
+  assert.deepEqual([0, 1, 2, 3, 4].map((n) => squat(wk(n))), [3, 4, 5, 3, 3]);
+  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "a-heel").sets, 2);
+  assert.equal(L.waveInfo(st.state, wk(3)).deload, true);
+  assert.equal(L.waveInfo(st.state, wk(4)).reps, "10–12");
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
+  const row = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "u-row").sets;
+  assert.deepEqual([0, 1, 2, 3].map((n) => row(wk(n))), [2, 3, 3, 2]);
+  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "u-iso").sets, 2);
+});

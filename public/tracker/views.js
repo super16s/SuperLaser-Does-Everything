@@ -125,7 +125,10 @@ export function workout(S, ui) {
     const readiness = hasUpper ? `<div class="alert ${rdOk ? "info" : ""}"><strong>Upper-body readiness</strong>
       <div class="stack" style="margin-top:6px">${L.READINESS.map((r) => btn(r.label, { a: "ready", id: r.id }, { on: !!rd[r.id] })).join("")}</div>
       <p class="small" style="margin:8px 0 0">${rdOk ? "All clear for today. Add load or reps gradually; stop if symptoms appear." : "If any of these is a no, do the lower-body sets only today and skip the upper-body ones."}</p></div>` : "";
-    body = `${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
+    const w = L.waveInfo(S, date);
+    const wave = `<div class="alert info"><strong>Week ${w.weekInBlock + 1} of 4${w.deload ? " — deload" : ""}</strong> · stop each set with ${w.rir}. Never to failure.
+      <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.</div></div>`;
+    body = `${wave}${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
     ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
@@ -139,7 +142,7 @@ export function workout(S, ui) {
   return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${ov === "walk" ? "Walk" : ov === "rest" ? "Rest" : `Workout ${ov}`}</em>` : ""}</h2>${picker}
     <div id="rest-box" class="row" style="margin:10px 0"><span class="timer" id="rtime" aria-live="off">${ui.rest ? "" : ""}</span>
       ${ui.rest ? btn("Cancel rest", { a: "restcancel" }) : ""}</div>
-    <div class="row small" role="group" aria-label="Rest timer length"><span class="muted">Auto-rest after a set:</span>${[0, ...L.REST_OPTIONS].map((n) => btn(n ? `${n}s` : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
+    <div class="row small" role="group" aria-label="Rest timer length"><span class="muted">Auto-rest after a set:</span>${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
     ${body}</section>
     <section class="card locked"><h2>🔒 Upper-body exercises (locked)</h2>
       <p class="muted small">These unlock only after you record clinician clearance <em>and</em> flag each exercise as cleared and pain-free in Settings → Injury clearance. The calendar never unlocks them. Until then, keep training legs.</p>
