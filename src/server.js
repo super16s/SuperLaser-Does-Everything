@@ -115,17 +115,26 @@ function handleCategories(req, res) {
 }
 
 function serveStatic(req, res, pathname) {
-  const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
+  // "/tracker" must become "/tracker/" so the sub-app's relative URLs resolve.
+  const target = path.join(PUBLIC_DIR, pathname.slice(1));
+  if (pathname !== "/" && !pathname.endsWith("/") && target.startsWith(PUBLIC_DIR) && fs.existsSync(target) && fs.statSync(target).isDirectory()) {
+    res.writeHead(301, { Location: `${pathname}/` });
+    res.end();
+    return;
+  }
+
+  let relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
+  if (relativePath.endsWith("/")) relativePath += "index.html";
   const filePath = path.join(PUBLIC_DIR, relativePath);
 
-  if (!filePath.startsWith(PUBLIC_DIR) || !fs.existsSync(filePath)) {
+  if (!filePath.startsWith(PUBLIC_DIR) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not found");
     return;
   }
 
   const ext = path.extname(filePath);
-  const contentType = relativePath === "manifest.json" ? "application/manifest+json" : CONTENT_TYPES[ext] || "application/octet-stream";
+  const contentType = path.basename(relativePath) === "manifest.json" ? "application/manifest+json" : CONTENT_TYPES[ext] || "application/octet-stream";
   res.writeHead(200, { "Content-Type": contentType });
   fs.createReadStream(filePath).pipe(res);
 }

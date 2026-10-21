@@ -119,6 +119,34 @@ Re-run it if you ever change the icon design.
 - Mastodon's federated network means a single instance's timeline/search
   only sees what that instance knows about, not all of Mastodon.
 
+## Gain Tracker (`/tracker/`)
+
+A tap-only, offline-first tracker for a weight-gain + injury-aware training
+plan: meal presets with portion chips (None/Half/Full/1.5×/2×), calorie and
+protein progress, weight stepper, workout set boxes with a rest timer, pain
+check-ins, a 12-minute yoga/meditation timer, charts, and a weekly review.
+Open http://localhost:3000/tracker/ (linked from the feed page); it installs
+as its own PWA.
+
+- **Data** lives only in the browser's localStorage on that device — no
+  server involved. Export JSON/CSV and import JSON from Settings; clearing
+  site data deletes everything, so back up occasionally. Every change is undoable.
+- **Injury gates**: upper-body exercises stay locked until you record
+  clinician clearance *and* flag each exercise cleared + pain-free. The week
+  number never unlocks anything. Red-flag pain options show a warning; the
+  app never diagnoses.
+- **Reminders** fire only while the app is open or backgrounded — a web app
+  can't wake itself when closed (that needs server push or a native app).
+  They never log anything. "Mark done" actions are deliberately omitted,
+  since they'd fabricate completion.
+- **Calorie guide** uses the least-squares weight slope over the last 14
+  days (≥4 weigh-ins spanning ≥7 days) rather than the gap between two
+  weekly means, which is dominated by water-weight noise.
+- Meal presets are planning estimates; changing one doesn't rewrite meals
+  already logged. Boosters add nothing until foods are assigned.
+- Logic is in `public/tracker/logic.js` / `store.js` (pure, tested):
+  `npm test`.
+
 ## NGS data script
 
 `scripts/fetch-ngs.js` downloads Next Gen Stats CSVs from nflverse. See the

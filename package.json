@@ -8,6 +8,7 @@
   },
   "scripts": {
     "fetch:ngs": "node scripts/fetch-ngs.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test"
   }
 }
