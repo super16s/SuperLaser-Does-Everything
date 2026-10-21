@@ -545,3 +545,42 @@ test("checklist follows the Today order: prayer, weight, sleep, breakfast, snack
   let at = -1;
   for (const id of seq) { const i = order.indexOf(id); assert.ok(i > at, `${id} out of order`); at = i; }
 });
+
+test("one-off foods: tap adds a serving, repeat adds more, half steps, custom entries, removal; per-day", () => {
+  const st = fresh();
+  const egg = L.FOODS.find((f) => f.id === "egg");
+  const add = (f) => run(st, (s) => A.addExtra(s, MON, { foodId: f.id, name: f.name, serving: f.serving, calories: f.calories, protein: f.protein }));
+  add(egg); add(egg);
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 140, protein: 12 });
+  assert.equal(L.getDay(st.state, MON).extras.length, 1);          // merged, not duplicated
+  const id = L.getDay(st.state, MON).extras[0].id;
+  run(st, (s) => A.stepExtra(s, MON, id, 0.5));
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 175, protein: 15 });
+  run(st, (s) => A.stepExtra(s, MON, id, -0.5));
+  run(st, (s) => A.addExtra(s, MON, { foodId: "custom", name: "Other food", calories: 250, protein: 10 }));
+  run(st, (s) => A.addExtra(s, MON, { foodId: "custom", name: "Other food", calories: 100, protein: 0 }));
+  assert.equal(L.getDay(st.state, MON).extras.length, 3);          // custom entries never merge
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 490, protein: 22 });
+  assert.deepEqual(L.mealTotals(st.state, TUE), { calories: 0, protein: 0 });
+  run(st, (s) => A.stepExtra(s, MON, id, -4));                     // below half a serving removes it
+  assert.equal(L.getDay(st.state, MON).extras.length, 2);
+  for (const x of [...L.getDay(st.state, MON).extras]) run(st, (s) => A.removeExtra(s, MON, x.id));
+  assert.equal(L.getDay(st.state, MON).extras, undefined);
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 0, protein: 0 });
+});
+
+test("food list is complete and plain", () => {
+  assert.ok(L.FOODS.length >= 25);
+  for (const f of L.FOODS) { assert.ok(f.name && f.serving && f.calories >= 0 && f.protein >= 0 && L.FOOD_GROUPS.includes(f.group), f.id); }
+  assert.equal(new Set(L.FOODS.map((f) => f.id)).size, L.FOODS.length);
+});
+
+test("extras work alongside presets and boosters in the day total, and render", async () => {
+  const V = await import("../public/tracker/views.js");
+  const st = fresh();
+  run(st, (s) => { A.setMeal(s, MON, "lunch", 1); A.addExtra(s, MON, { foodId: "pb", name: "Peanut butter", serving: "1 tbsp", calories: 95, protein: 4 }); });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 895, protein: 54 });
+  const html = V.today(st.state, { tab: "today", date: MON, painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, customKcal: 200, customProtein: 10 });
+  assert.match(html, /Anything else you ate/);
+  assert.match(html, /Peanut butter/);
+});

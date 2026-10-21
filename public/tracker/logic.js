@@ -38,6 +38,44 @@ export const DEFAULT_PRESETS = [
     amounts: "1/2 cup plain Greek yogurt" },
 ];
 
+// Common foods for one-off logging on Today ("Anything else you ate"). Rough US
+// estimates per the serving shown; the totals only count what you tap.
+export const FOOD_GROUPS = ["Protein", "Carbs", "Fats and dairy", "Snacks and drinks", "Eating out"];
+export const FOODS = [
+  { id: "egg", group: "Protein", name: "Egg", serving: "1 large", calories: 70, protein: 6 },
+  { id: "chicken-breast", group: "Protein", name: "Chicken breast", serving: "4 oz cooked", calories: 185, protein: 35 },
+  { id: "chicken-thigh", group: "Protein", name: "Chicken thigh", serving: "4 oz cooked", calories: 210, protein: 27 },
+  { id: "ground-beef", group: "Protein", name: "Ground beef", serving: "4 oz cooked", calories: 290, protein: 28 },
+  { id: "steak", group: "Protein", name: "Steak", serving: "6 oz cooked", calories: 380, protein: 42 },
+  { id: "salmon", group: "Protein", name: "Salmon", serving: "5 oz cooked", calories: 290, protein: 32 },
+  { id: "tuna", group: "Protein", name: "Tuna", serving: "1 can", calories: 120, protein: 26 },
+  { id: "turkey", group: "Protein", name: "Ground turkey", serving: "4 oz cooked", calories: 200, protein: 27 },
+  { id: "rice", group: "Carbs", name: "Rice", serving: "1 cup cooked", calories: 205, protein: 4 },
+  { id: "pasta", group: "Carbs", name: "Pasta", serving: "1 cup cooked", calories: 200, protein: 7 },
+  { id: "potato", group: "Carbs", name: "Potato", serving: "1 medium", calories: 160, protein: 4 },
+  { id: "oats", group: "Carbs", name: "Oats", serving: "1/2 cup dry", calories: 150, protein: 5 },
+  { id: "bread", group: "Carbs", name: "Bread", serving: "1 slice", calories: 80, protein: 3 },
+  { id: "beans", group: "Carbs", name: "Beans", serving: "1/2 cup", calories: 110, protein: 7 },
+  { id: "pb", group: "Fats and dairy", name: "Peanut butter", serving: "1 tbsp", calories: 95, protein: 4 },
+  { id: "olive-oil", group: "Fats and dairy", name: "Olive oil", serving: "1 tbsp", calories: 120, protein: 0 },
+  { id: "avocado", group: "Fats and dairy", name: "Avocado", serving: "1/2", calories: 120, protein: 2 },
+  { id: "cheese", group: "Fats and dairy", name: "Cheese", serving: "1 oz", calories: 110, protein: 7 },
+  { id: "yogurt", group: "Fats and dairy", name: "Greek yogurt", serving: "3/4 cup", calories: 130, protein: 17 },
+  { id: "whole-milk", group: "Fats and dairy", name: "Whole milk", serving: "1 cup", calories: 150, protein: 8 },
+  { id: "soy-milk", group: "Fats and dairy", name: "Soy milk", serving: "1 cup", calories: 100, protein: 7 },
+  { id: "banana", group: "Snacks and drinks", name: "Banana", serving: "1 medium", calories: 105, protein: 1 },
+  { id: "apple", group: "Snacks and drinks", name: "Apple", serving: "1 medium", calories: 95, protein: 0 },
+  { id: "almonds", group: "Snacks and drinks", name: "Almonds", serving: "1 oz", calories: 165, protein: 6 },
+  { id: "jerky", group: "Snacks and drinks", name: "Beef jerky", serving: "1 oz", calories: 80, protein: 13 },
+  { id: "protein-scoop", group: "Snacks and drinks", name: "Plant protein", serving: "1 scoop", calories: 120, protein: 24 },
+  { id: "pizza", group: "Eating out", name: "Pizza", serving: "1 slice", calories: 285, protein: 12 },
+  { id: "burger", group: "Eating out", name: "Burger", serving: "1 regular", calories: 500, protein: 25 },
+  { id: "burrito", group: "Eating out", name: "Burrito", serving: "1 large", calories: 800, protein: 35 },
+  { id: "sandwich", group: "Eating out", name: "Sandwich", serving: "1 deli", calories: 450, protein: 25 },
+];
+export const CUSTOM_KCAL_STEPS = [-100, -50, 50, 100];
+export const CUSTOM_PROTEIN_STEPS = [-10, -5, 5, 10];
+
 // One-tap meal ideas for the preset library. Calories/protein are rough starter
 // estimates for a typical plate; edit them to match your portions.
 export const MEAL_IDEAS = [
@@ -353,6 +391,7 @@ export function mealTotals(state, date) {
     protein += m.protein * m.multiplier;
   }
   for (const b of day.boosters || []) { calories += b.calories; protein += b.protein || 0; }
+  for (const x of day.extras || []) { calories += x.calories * x.servings; protein += x.protein * x.servings; }
   return { calories: Math.round(calories), protein: Math.round(protein) };
 }
 

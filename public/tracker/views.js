@@ -74,6 +74,22 @@ function checklist(S, ui) {
   }).join("")}</ul>`).join("") + `<p class="muted small">Tap an item to toggle or open it. Long-press for Skipped / Partial / Substituted. * = set by hand. “Not logged” never means skipped.</p>`;
 }
 
+function extrasCard(S, ui) {
+  const day = L.getDay(S, ui.date), list = day.extras || [];
+  const kcal = ui.customKcal ?? 200, pro = ui.customProtein ?? 10;
+  const groups = L.FOOD_GROUPS.map((g) => `<details style="margin:6px 0"><summary><strong>${esc(g)}</strong></summary><div class="chips foods" style="margin-top:6px">${L.FOODS.filter((f) => f.group === g).map((f) => btn(`${esc(f.name)} <span class="muted small">${esc(f.serving)} · ${f.calories} kcal</span>`, { a: "xadd", id: f.id }, { aria: `Add ${f.name}, ${f.serving}, about ${f.calories} calories` })).join("")}</div></details>`).join("");
+  const entries = list.map((x) => `<div class="row between" style="margin-top:8px"><span><strong>${esc(x.name)}</strong> <span class="muted small">${x.serving ? esc(x.serving) + " · " : ""}${nf(x.calories * x.servings)} kcal · ${nf(x.protein * x.servings)} g</span></span>
+      <span class="row">${btn("−", { a: "xstep", id: x.id, v: -0.5 }, { aria: `Fewer servings of ${x.name}` })}<strong>${x.servings}×</strong>${btn("+", { a: "xstep", id: x.id, v: 0.5 }, { aria: `More servings of ${x.name}` })}${btn("Remove", { a: "xrm", id: x.id }, { cls: "link" })}</span></div>`).join("");
+  return `<section class="card" id="extras" aria-label="Anything else you ate"><h2>Anything else you ate</h2>
+    <p class="muted small" style="margin:0 0 6px">Tap a food to count one serving (rough estimates). Tap again for more, or use − and + for half servings.</p>
+    ${groups}
+    <details style="margin:6px 0"><summary><strong>Something not listed</strong></summary>
+      <div class="row small" style="margin-top:6px"><strong aria-live="polite">${kcal} kcal</strong>${L.CUSTOM_KCAL_STEPS.map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "ckstep", v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} calories` })).join("")}</div>
+      <div class="row small" style="margin-top:6px"><strong aria-live="polite">${pro} g protein</strong>${L.CUSTOM_PROTEIN_STEPS.map((v) => btn(`${v > 0 ? "+" : "−"}${Math.abs(v)}`, { a: "cpstep", v }, { aria: `${v > 0 ? "Add" : "Subtract"} ${Math.abs(v)} grams of protein` })).join("")}</div>
+      <div class="row" style="margin-top:8px">${btn("Add this", { a: "xcustom" }, { cls: "primary" })}</div></details>
+    ${entries ? `<h3>Added today</h3>${entries}` : ""}</section>`;
+}
+
 function prayerCard(S, ui, p) {
   const st = L.getDay(S, ui.date).prayer?.[p.id]?.status;
   const label = st === "done" ? `${p.label} ✓` : st === "skipped" ? `${p.label} (skipped)` : p.label;
@@ -107,7 +123,7 @@ export function today(S, ui) {
   // The day, in order: prayer, weight, sleep, then food (breakfast, snack, lunch, snack, dinner, snack), then prayer.
   return `${prayerCard(S, ui, L.PRAYERS[0])}${weightCard}${sleepCard}${totalsCard}
     ${["breakfast", "snack1", "lunch", "shake", "dinner", "snack"].map(meal).join("")}
-    ${boosterCard}${prayerCard(S, ui, L.PRAYERS[1])}
+    ${extrasCard(S, ui)}${boosterCard}${prayerCard(S, ui, L.PRAYERS[1])}
     <section class="card"><h2>Daily checklist</h2>${checklist(S, ui)}</section>
     ${lists(S, ui)}`;
 }

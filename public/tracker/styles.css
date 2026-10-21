@@ -243,3 +243,7 @@ details.card > summary { border-radius: 12px; }
   @keyframes celeglow { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 }
 @media (prefers-reduced-motion: reduce) { .cele { display: none; } }
+
+/* food picker: two per row, serving size on its own line */
+.chips.foods button { flex: 1 1 calc(50% - 8px); border-radius: 14px; text-align: left; padding: 8px 12px; font-size: .92rem; line-height: 1.25; }
+.chips.foods button .muted { display: block; font-weight: 400; }

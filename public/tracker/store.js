@@ -234,6 +234,28 @@ export const actions = {
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
+  // One-off foods. Tapping the same food again adds another serving; custom items are separate entries.
+  addExtra(s, date, item) {
+    const d = day(s, date);
+    d.extras ||= [];
+    const same = item.foodId !== "custom" && d.extras.find((x) => x.foodId === item.foodId);
+    if (same) { same.servings += 1; return; }
+    d.extras.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, foodId: item.foodId, name: item.name, serving: item.serving || "", calories: item.calories, protein: item.protein, servings: 1, ...stamp() });
+  },
+  stepExtra(s, date, id, delta) {
+    const d = day(s, date), x = (d.extras || []).find((e) => e.id === id);
+    if (!x) return;
+    x.servings = Math.round((x.servings + delta) * 2) / 2;
+    if (x.servings < 0.5) d.extras = d.extras.filter((e) => e.id !== id);
+    if (!d.extras.length) delete d.extras;
+    prune(s, date);
+  },
+  removeExtra(s, date, id) {
+    const d = day(s, date);
+    d.extras = (d.extras || []).filter((e) => e.id !== id);
+    if (!d.extras.length) delete d.extras;
+    prune(s, date);
+  },
   setPrayer(s, date, which, status) {
     const d = day(s, date);
     d.prayer ||= {};

@@ -8,7 +8,7 @@ import { startScheduler, snooze, skipToday, notify, askPermission } from "./remi
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, rest: null, restLen: 60, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, customKcal: 200, customProtein: 10, rest: null, restLen: 60, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
 ui.date = L.ymd(); // always open on today
 const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen, guided: ui.guided })); } catch {} };
@@ -49,13 +49,18 @@ const closeMenu = () => { $("#menu").hidden = true; };
 
 // ---------- render ----------
 
+// Screens are redrawn from scratch on every tap, which would collapse any open <details>
+// (food groups, ingredient amounts, lists). Remember which were open and reopen them.
+const detailsKey = (d) => `${d.closest("[id]")?.id || ""}|${d.querySelector("summary")?.textContent.trim().slice(0, 40)}`;
 function render() {
+  const openKeys = new Set([...document.querySelectorAll("#view details[open]")].map(detailsKey));
   const focusKey = document.activeElement?.dataset?.fk;
   const y = window.scrollY;
   $("#top").innerHTML = V.header(S(), ui, store.canUndo());
   const views = { today: V.today, workout: V.workout, recovery: V.recovery, progress: V.progressView, settings: V.settings };
   $("#view").innerHTML = views[ui.tab](S(), ui);
   $("#tabs").innerHTML = V.tabs(ui);
+  document.querySelectorAll("#view details").forEach((d) => { if (openKeys.has(detailsKey(d))) d.open = true; });
   renderBanners();
   animateBars();
   celebrations();
@@ -297,6 +302,16 @@ const handlers = {
     if (suppress) return;
     const label = L.PRAYERS.find((p) => p.id === d.w).label, had = L.getDay(S(), ui.date).prayer?.[d.w]?.status === "done";
     act((s) => A.setPrayer(s, ui.date, d.w, "done"), had ? `${label} cleared` : `${label} logged`);
+  },
+  xadd(d) { const f = L.FOODS.find((x) => x.id === d.id); act((s) => A.addExtra(s, ui.date, { foodId: f.id, name: f.name, serving: f.serving, calories: f.calories, protein: f.protein }), `${f.name} added`); },
+  xstep: (d) => act((s) => A.stepExtra(s, ui.date, d.id, +d.v), "Servings updated"),
+  xrm: (d) => act((s) => A.removeExtra(s, ui.date, d.id), "Removed"),
+  ckstep(d) { ui.customKcal = Math.max(0, ui.customKcal + +d.v); render(); },
+  cpstep(d) { ui.customProtein = Math.max(0, ui.customProtein + +d.v); render(); },
+  xcustom() {
+    if (!ui.customKcal && !ui.customProtein) return toast("Set calories or protein first.", false);
+    const k = ui.customKcal, p = ui.customProtein;
+    act((s) => A.addExtra(s, ui.date, { foodId: "custom", name: "Other food", serving: "", calories: k, protein: p }), `Other food: ${k} kcal added`);
   },
   restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
   restcancel() { ui.rest = null; render(); },
