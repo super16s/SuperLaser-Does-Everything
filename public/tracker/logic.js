@@ -170,7 +170,7 @@ const STAGE = {
 // Exercises where you log a working weight (machines, barbells, dumbbells, cables).
 export const LOADED_IDS = new Set(["g-squat", "g-rdl", "g-legcurl", "g-calf", "g-split", "g-thrust", "g-ext",
   "u-bench", "u-lat-raise", "u-row", "u-tri", "u-incdb", "u-pulldown", "u-ohp", "u-fly", "u-rear", "u-tri-oh"]);
-export const LOAD_STEPS = [-10, -5, -2.5, 2.5, 5, 10];
+export const LOAD_STEPS = [-25, -10, -5, -2.5, 2.5, 5, 10, 25];
 
 export const REST_OPTIONS = [45, 60, 90, 120, 180];
 

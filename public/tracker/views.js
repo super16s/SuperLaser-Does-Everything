@@ -144,7 +144,7 @@ export function workout(S, ui) {
       ${e.loaded ? loadRow(S, ui, e) : ""}
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
-        return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;
+        return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${st === "done" ? "" : GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;
       }).join("")}</div></div>`).join("")}
     <div class="alert">Stop if neck or elbow symptoms are provoked. Keep arms relaxed, neck neutral, and don't support weight on the injured arm.
       <div style="margin-top:8px">${btn("Symptoms provoked — stop & check in", { a: "provoked" }, { cls: "danger" })}</div></div>
