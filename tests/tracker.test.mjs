@@ -371,3 +371,24 @@ test("gym days stay fixed: Mon A, Wed B, Fri A every week", () => {
     assert.equal(L.routineForDate(st.state, L.addDays(MON, 7 * n + 4)), "A");
   }
 });
+
+test("guided flow: next set walks the session in order; skip/partial count as logged; previous set undoes", () => {
+  const st = fresh();
+  const exs = L.exercisesForDate(st.state, MON);
+  assert.deepEqual([L.nextSet(st.state, MON).e.id, L.nextSet(st.state, MON).i], [exs[0].id, 0]);
+  run(st, (s) => A.setSet(s, MON, exs[0].id, 0, "done"));
+  assert.equal(L.nextSet(st.state, MON).i, 1);
+  run(st, (s) => A.setSet(s, MON, exs[0].id, 1, "skipped"));
+  assert.equal(L.nextSet(st.state, MON).i, 2);
+  assert.deepEqual([L.lastLoggedSet(st.state, MON).e.id, L.lastLoggedSet(st.state, MON).i], [exs[0].id, 1]);
+  run(st, (s) => A.setSet(s, MON, exs[0].id, 1, null));
+  assert.equal(L.nextSet(st.state, MON).i, 1);
+  // finish everything (fresh state: tapping a done set toggles it off by design)
+  const st3 = fresh();
+  for (const e of exs) for (let i = 0; i < e.sets; i++) run(st3, (s) => A.setSet(s, MON, e.id, i, "done"));
+  assert.equal(L.nextSet(st3.state, MON), null);
+  // moves on to the next exercise when one finishes
+  const st2 = fresh();
+  for (let i = 0; i < exs[0].sets; i++) run(st2, (s) => A.setSet(s, MON, exs[0].id, i, "done"));
+  assert.deepEqual([L.nextSet(st2.state, MON).e.id, L.nextSet(st2.state, MON).i], [exs[1].id, 0]);
+});

@@ -16,10 +16,10 @@ const STATE_TEXT = { done: "Done", partial: "Partial", skipped: "Skipped", subst
 const dateLabel = (d) => L.parseYmd(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 const shortDate = (d) => L.parseYmd(d).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 
-function progress(label, value, target, unit) {
+function progress(label, value, target, unit, key) {
   const pct = target ? Math.min(100, (100 * value) / target) : 0;
   return `<div><div class="row between"><span>${label}</span><span><strong>${nf(value)}</strong> / ${nf(target)}${unit}</span></div>
-  <div class="bar-track" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="${target}" aria-valuenow="${Math.round(value)}"><div class="bar-fill${value > target * 1.1 ? " over" : ""}" style="width:${pct}%"></div></div></div>`;
+  <div class="bar-track" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="${target}" aria-valuenow="${Math.round(value)}"><div class="bar-fill${value > target * 1.1 ? " over" : ""}" data-key="${esc(key)}" data-pct="${Math.round(pct)}" style="width:${pct}%"></div></div></div>`;
 }
 export const lastWeight = (S, date) => {
   for (let d = date, i = 0; i < 120; i++, d = L.addDays(d, -1)) { const w = L.getDay(S, d).weight; if (w) return w.lb; }
@@ -80,7 +80,7 @@ export function today(S, ui) {
   const wPresets = [-2, -1, 0, 1, 2].map((d) => { const v = Math.round((last + d) * 10) / 10; return btn(`${v.toFixed(1)}`, { a: "wset", v }, { on: base === v, aria: `Set ${v.toFixed(1)} pounds` }); }).join("");
   const boosters = S.boosters.map((b) => btn(`+${b.calories} kcal`, { a: "booster", id: b.id }, { disabled: !b.foods.trim(), aria: b.foods.trim() ? `Add ${b.calories} kcal: ${b.foods}` : `${b.calories} kcal booster, no foods assigned. Assign in Settings.` })).join("");
   return `<section class="card" aria-label="Daily totals"><h2>Today's totals</h2><div class="stack" aria-live="polite">
-      ${progress("Calories", tot.calories, S.profile.calorieTarget, " kcal")}${progress("Protein", tot.protein, S.profile.proteinTarget, " g")}</div>
+      ${progress("Calories", tot.calories, S.profile.calorieTarget, " kcal", `${date}|cal`)}${progress("Protein", tot.protein, S.profile.proteinTarget, " g", `${date}|pro`)}</div>
       <p class="muted small" style="margin:8px 0 0">Totals count only meals you tapped. Targets are estimates.</p>
       ${nx ? `<p class="small" style="margin:8px 0 0">Next reminder: <strong>${esc(nx.reminder.label)}</strong> · ${nx.at.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</p>` : ""}</section>
     ${L.SLOTS.map((s) => mealCard(S, ui, s)).join("")}
@@ -106,6 +106,24 @@ function lists(S, ui) {
 }
 
 // ---------- Workout ----------
+
+function guided(S, ui, exs) {
+  const date = ui.date, day = L.getDay(S, date), cur = L.nextSet(S, date), last = L.lastLoggedSet(S, date);
+  const pctOf = (e) => Math.round((100 * Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length) / e.sets);
+  const strip = `<div class="strip" role="img" aria-label="Exercise progress">${exs.map((e) => { const pct = pctOf(e); return `<div class="seg${cur && cur.e.id === e.id ? " current" : ""}${pct === 100 ? " complete" : ""}"><div class="pfill" data-key="${date}|ex-${e.id}" data-pct="${pct}" style="width:${pct}%"></div></div>`; }).join("")}</div>`;
+  const nav = `<div class="row" style="margin-top:10px">${btn("↶ Previous set", { a: "gback" }, { disabled: !last })}${cur ? btn("Skip this set", { a: "gskip" }) : ""}</div>`;
+  if (!cur) return `${strip}<div class="guided finish" data-gkey="${date}|done"><h2>All sets logged 🎉</h2><p class="muted">Nice work. Switch to List to review loads or fix a set.</p>${nav}</div>`;
+  const { e, i, xi } = cur;
+  const nextTxt = i + 1 < e.sets ? `Next: set ${i + 2} of ${e.sets}` : exs[xi + 1] ? `Next up: ${esc(exs[xi + 1].name)}` : "Last set of the workout";
+  return `${strip}<div class="guided" data-gkey="${date}|${e.id}"><div class="muted small">Exercise ${xi + 1} of ${exs.length}</div>
+    <h2 style="margin:2px 0 4px">${esc(e.name)}</h2>
+    <div class="muted">${e.sets} × ${esc(e.reps)}${e.isDensity ? ` · <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}</div>
+    ${e.cue ? `<div class="muted small" style="margin-top:4px">${esc(e.cue)}</div>` : ""}
+    ${e.loaded ? loadRow(S, ui, e) : ""}
+    <div class="big" style="margin:12px 0 6px">Set ${i + 1} of ${e.sets}</div>
+    <button type="button" class="primary giant" data-a="set" data-ex="${e.id}" data-i="${i}" data-g="1" data-fk="guided-go" aria-label="Complete ${esc(e.name)} set ${i + 1} of ${e.sets}">✓ Complete set</button>
+    <div class="muted small" style="margin-top:6px">${nextTxt}</div>${nav}</div>`;
+}
 
 function loadRow(S, ui, e) {
   const logged = L.getDay(S, ui.date).loads?.[e.id]?.lb, { last, best } = L.loadHistory(S, e.id, ui.date);
@@ -138,14 +156,23 @@ export function workout(S, ui) {
     const w = L.waveInfo(S, date);
     const wave = `<div class="alert info"><strong>Week ${w.weekInBlock + 1} of 4${w.deload ? " — deload" : ""}</strong> · stop each set with ${w.rir}. Never to failure.
       <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.${L.isDensityWeek(S, date) ? " <strong>Density week:</strong> the marked leg lift is 8 sets with short rests. Keep it to about 2 reps in reserve, use a load where the last sets are hard but clean, and stop early if form or neck/elbow comfort slips." : ""}</div></div>`;
-    body = `${wave}${readiness}<p class="muted">${prog.done} / ${prog.total} sets done · rest ~45–90 s between sets.</p>
-    ${exs.map((e) => `<div style="margin:12px 0"><strong>${esc(e.name)}</strong> <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}${e.cue ? `<div class="muted small">${esc(e.cue)}</div>` : ""}
+    const wkPct = prog.total ? Math.round((100 * prog.done) / prog.total) : 0;
+    const wkAd = L.adherence(S, L.weekStartOf(date), L.addDays(L.weekStartOf(date), 6), L.ymd());
+    const headline = `<div class="hero${wkPct === 100 ? " complete" : ""}"><div class="row between"><strong>${wkPct === 100 ? "🎉 Workout complete" : "Today's workout"}</strong><span><strong>${prog.done}</strong> / ${prog.total} sets · ${wkPct}%</span></div>
+      <div class="pbar" role="progressbar" aria-label="Workout progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${wkPct}"><div class="pfill" data-key="${date}|wk" data-pct="${wkPct}" style="width:${wkPct}%"></div></div>
+      ${wkAd.scheduled ? `<div class="muted small">This week: ${wkAd.completed} of ${wkAd.scheduled} workouts done</div>` : ""}</div>`;
+    const modeToggle = `<div class="chips" role="group" aria-label="Workout view" style="margin:8px 0">${btn("Guided: tap through", { a: "gmode", v: 1 }, { on: ui.guided })}${btn("List: all sets", { a: "gmode", v: 0 }, { on: !ui.guided })}</div>`;
+    body = `${headline}${wave}${readiness}${modeToggle}
+    ${ui.guided ? guided(S, ui, exs) : exs.map((e) => {
+      const exDone = Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length, exPct = Math.round((100 * exDone) / e.sets);
+      return `<div class="exblock${exPct === 100 ? " complete" : ""}" style="margin:12px 0"><div class="pbar mini" aria-hidden="true"><div class="pfill" data-key="${date}|ex-${e.id}" data-pct="${exPct}" style="width:${exPct}%"></div></div><strong>${esc(e.name)}</strong>${exPct === 100 ? ` <span class="state s-done">✓ Complete</span>` : ""} <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}${e.cue ? `<div class="muted small">${esc(e.cue)}</div>` : ""}
       <div class="row small" style="margin-top:4px">${e.ladder ? `<span class="muted">Step ${e.level + 1} of ${L.LADDERS[e.progKey].length}</span>` : (e.level ? `<span class="muted">Load level ${e.level}</span>` : "")}${btn("Progress ↑", { a: "prog", key: e.progKey, dir: 1 }, { cls: "link", aria: `Progress ${e.name}` })}${e.level ? btn("Back off ↓", { a: "prog", key: e.progKey, dir: -1 }, { cls: "link", aria: `Back off ${e.name}` }) : ""}</div>
       ${e.loaded ? loadRow(S, ui, e) : ""}
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
         return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${st === "done" ? "" : GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;
-      }).join("")}</div></div>`).join("")}
+      }).join("")}</div></div>`;
+    }).join("")}
     <div class="alert">Stop if neck or elbow symptoms are provoked. Keep arms relaxed, neck neutral, and don't support weight on the injured arm.
       <div style="margin-top:8px">${btn("Symptoms provoked — stop & check in", { a: "provoked" }, { cls: "danger" })}</div></div>
     <div class="row">${btn(skipped ? "Workout skipped (tap to undo)" : "Skip today's workout", { a: "skipworkout" }, { on: !!skipped })}</div>`;

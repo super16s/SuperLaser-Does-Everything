@@ -580,3 +580,21 @@ export function loadHistory(state, exId, date) {
   }
   return { last, best };
 }
+
+// ---------- Guided workout ----------
+
+// The first set (in session order) with nothing logged yet; skipped/partial count as logged.
+export function nextSet(state, date) {
+  const sets = getDay(state, date).sets || {};
+  const exs = exercisesForDate(state, date);
+  for (let xi = 0; xi < exs.length; xi++) for (let i = 0; i < exs[xi].sets; i++) if (!sets[setKey(exs[xi].id, i)]) return { e: exs[xi], i, xi, total: exs.length };
+  return null;
+}
+// The most recently logged set in session order (for the "Previous set" button).
+export function lastLoggedSet(state, date) {
+  const sets = getDay(state, date).sets || {};
+  const exs = exercisesForDate(state, date);
+  let last = null;
+  for (const e of exs) for (let i = 0; i < e.sets; i++) if (sets[setKey(e.id, i)]) last = { e, i };
+  return last;
+}

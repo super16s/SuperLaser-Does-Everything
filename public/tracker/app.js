@@ -7,10 +7,10 @@ import { startScheduler, snooze, skipToday, notify, askPermission } from "./remi
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, rest: null, restLen: 60, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, rest: null, restLen: 60, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
 ui.date = L.ymd(); // always open on today
-const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen })); } catch {} };
+const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen, guided: ui.guided })); } catch {} };
 
 // ---------- helpers ----------
 
@@ -56,6 +56,7 @@ function render() {
   $("#view").innerHTML = views[ui.tab](S(), ui);
   $("#tabs").innerHTML = V.tabs(ui);
   renderBanners();
+  animateBars();
   window.scrollTo(0, y);
   if (focusKey) document.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
   tickTimers();
@@ -67,6 +68,47 @@ function renderBanners() {
   $("#banners").innerHTML = err + b;
 }
 store.subscribe(render);
+
+// ---------- progress animation ----------
+
+const reduceMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+// Views are re-rendered from scratch on every tap, so a bar would never animate by
+// itself. Remember each bar's last value and grow it from there to the new one.
+function animateBars() {
+  const motion = !reduceMotion();
+  let confetti = false;
+  document.querySelectorAll("[data-pct]").forEach((el) => {
+    const key = el.dataset.key, to = +el.dataset.pct, seen = key in ui.prevPct, from = seen ? ui.prevPct[key] : to;
+    ui.prevPct[key] = to;
+    if (motion && from !== to) {
+      el.style.width = `${from}%`;
+      void el.offsetWidth; // commit the start width, then transition to the target
+      el.style.width = `${to}%`;
+    }
+    if (motion && seen && from < 100 && to === 100) {
+      if (key.endsWith("|wk")) confetti = true;
+      else if (/\|ex-/.test(key)) el.closest(".exblock, .seg")?.classList.add("pop");
+      else el.closest(".card")?.classList.add("pop");
+    }
+  });
+  const g = document.querySelector(".guided[data-gkey]");
+  if (g) { if (motion && ui.prevG && ui.prevG !== g.dataset.gkey) g.classList.add("enter"); ui.prevG = g.dataset.gkey; }
+  if (ui.popFk) { document.querySelector(`[data-fk="${CSS.escape(ui.popFk)}"]`)?.classList.add("tap-pop"); ui.popFk = null; }
+  if (confetti) { launchConfetti(); try { navigator.vibrate?.([30, 40, 60]); } catch {} }
+}
+function launchConfetti() {
+  const box = document.createElement("div");
+  box.className = "confetti"; box.setAttribute("aria-hidden", "true");
+  const colors = ["#3fbf94", "#2f6fed", "#f0953f", "#e8c547", "#d9548a"];
+  for (let i = 0; i < 36; i++) {
+    const c = document.createElement("i");
+    c.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-delay:${Math.random() * 0.35}s;--drift:${(Math.random() - 0.5) * 120}px;--spin:${Math.random() * 720 - 360}deg`;
+    box.append(c);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 2600);
+}
 
 // ---------- timers ----------
 
@@ -179,6 +221,7 @@ const handlers = {
   set(d) {
     if (suppress) return;
     const was = L.getDay(S(), ui.date).sets?.[L.setKey(d.ex, +d.i)]?.status;
+    ui.popFk = d.g ? "guided-go" : `set-${d.ex}-${d.i}`;
     act((s) => { if (was && was !== "done") A.setSet(s, ui.date, d.ex, +d.i, null); A.setSet(s, ui.date, d.ex, +d.i, "done"); }, `Set ${+d.i + 1}`);
     // Marking done (not un-marking) starts the rest timer if enabled.
     if (was !== "done" && ui.restLen) { ui.rest = { endAt: Date.now() + ui.restLen * 1000 }; render(); }
@@ -193,6 +236,9 @@ const handlers = {
     act((s) => A.setLoad(s, ui.date, d.ex, draft), `Load ${draft} lb logged`);
   },
   lclear(d) { delete ui.loadDraft[d.ex]; act((s) => A.setLoad(s, ui.date, d.ex, null), "Load cleared"); },
+  gmode(d) { ui.guided = d.v === "1"; saveUi(); render(); },
+  gskip() { const n = L.nextSet(S(), ui.date); if (n) act((s) => A.setSet(s, ui.date, n.e.id, n.i, "skipped"), "Set skipped"); },
+  gback() { const l = L.lastLoggedSet(S(), ui.date); if (l) act((s) => A.setSet(s, ui.date, l.e.id, l.i, null), "Back one set"); },
   restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
   restcancel() { ui.rest = null; render(); },
   provoked() { ui.painTod = "after"; ui.rest = null; toast("Stop the workout. Log how it feels below.", false); goTab("recovery"); },

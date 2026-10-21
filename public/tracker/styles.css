@@ -88,3 +88,43 @@ table.plain { width: 100%; border-collapse: collapse; font-size: .88rem; } table
 .setgrid { display: flex; gap: 6px; flex-wrap: wrap; }
 .setgrid button { flex: 0 0 auto; min-width: 96px; }
 @media (prefers-reduced-motion: no-preference) { .bar-fill { transition: width .25s; } }
+
+/* ---- progress + completion animation ---- */
+.hero { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin: 0 0 12px; }
+.hero.complete { border-color: var(--accent); background: var(--on); }
+.pbar { height: 16px; background: var(--border); border-radius: 10px; overflow: hidden; margin: 8px 0 4px; }
+.pbar.mini { height: 6px; margin: 0 0 6px; }
+.pfill { height: 100%; width: 0; border-radius: 10px; background: linear-gradient(90deg, var(--accent), var(--s1)); }
+.exblock.complete .pfill, .hero.complete .pfill { background: var(--accent); }
+.exblock.complete > strong { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .pfill, .bar-fill { transition: width .7s cubic-bezier(.2, .8, .2, 1); }
+  .pfill { background-size: 200% 100%; animation: shimmer 2.4s linear infinite; }
+  .exblock.complete .pfill, .hero.complete .pfill { animation: none; }
+  .exblock.pop, .card.pop { animation: glow .9s ease-out; }
+  .exblock.pop .state { animation: badge .5s cubic-bezier(.3, 1.6, .5, 1); }
+  button.tap-pop { animation: tap .35s cubic-bezier(.3, 1.6, .5, 1); }
+  .hero.complete { animation: glow 1.2s ease-out; }
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 40; }
+  .confetti i { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; opacity: 0; animation: fall 1.9s ease-in forwards; }
+  @keyframes shimmer { from { background-position: 0 0; } to { background-position: -200% 0; } }
+  @keyframes glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); transform: scale(1); } 40% { transform: scale(1.015); } 100% { box-shadow: 0 0 0 16px transparent; transform: scale(1); } }
+  @keyframes badge { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes tap { 0% { transform: scale(.88); } 100% { transform: scale(1); } }
+  @keyframes fall { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--drift), 105vh) rotate(var(--spin)); } }
+}
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
+/* ---- guided workout ---- */
+.strip { display: flex; gap: 4px; margin: 10px 0; }
+.seg { flex: 1; height: 10px; background: var(--border); border-radius: 6px; overflow: hidden; }
+.seg.current { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg .pfill { border-radius: 6px; }
+.guided { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 4px 0 12px; }
+.guided.finish { border-color: var(--accent); background: var(--on); text-align: center; }
+button.giant { width: 100%; min-height: 72px; font-size: 1.3rem; border-radius: 16px; }
+@media (prefers-reduced-motion: no-preference) {
+  .guided.enter { animation: slidein .35s cubic-bezier(.2, .8, .2, 1); }
+  .seg.pop { animation: glow .9s ease-out; }
+  @keyframes slidein { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+}
