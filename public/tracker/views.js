@@ -111,7 +111,7 @@ export function workout(S, ui) {
   const date = ui.date, routine = L.routineForDate(S, date), sched = L.SCHEDULE[L.weekdayOf(date)];
   const day = L.getDay(S, date), skipped = day.workout?.skipped;
   const ov = day.workout?.override;
-  const opts = [["", "Scheduled"], ["A", "A"], ["B", "B"], ["walk", "Walk"], ["rest", "Rest"]];
+  const opts = [["", "Scheduled"], ["A", "Gym A"], ["B", "Gym B"], ["H1", "Home 1"], ["H2", "Home 2"], ["walk", "Walk"], ["rest", "Rest"]];
   const picker = `<div class="chips" role="group" aria-label="Today's routine">${opts.map(([v, l]) => btn(l, { a: "override", v }, { on: (ov || "") === v })).join("")}</div>`;
   let body;
   if (!L.isLoadedRoutine(routine)) {
@@ -140,7 +140,7 @@ export function workout(S, ui) {
     <div class="row">${btn(skipped ? "Workout skipped (tap to undo)" : "Skip today's workout", { a: "skipworkout" }, { on: !!skipped })}</div>`;
   }
   const locked = L.UPPER_BODY.filter((u) => !L.isExerciseUnlocked(S, u.id));
-  return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${ov === "walk" ? "Walk" : ov === "rest" ? "Rest" : `Workout ${ov}`}</em>` : ""}</h2>${picker}
+  return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${L.ROUTINE_LABEL[ov]}</em>` : ""}</h2>${picker}
     <div id="rest-box" class="row" style="margin:10px 0"><span class="timer" id="rtime" aria-live="off">${ui.rest ? "" : ""}</span>
       ${ui.rest ? btn("Cancel rest", { a: "restcancel" }) : ""}</div>
     <div class="row small" role="group" aria-label="Rest timer length"><span class="muted">Auto-rest after a set:</span>${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
@@ -302,7 +302,7 @@ export function settings(S, ui) {
     <p class="muted small">Timezone: ${esc(S.profile.timezone)}. Start/goal weights are scale-weight targets, not lean mass. Calorie targets are estimates.</p></section>
   <section class="card"><h2>Injury clearance gates</h2>
     <p class="muted small">Record only what actually happened. Each step unlocks the next; upper-body exercises need clearance <em>plus</em> both per-exercise flags.</p>
-    <ul class="checklist">${lad}</ul><h3>Per-exercise flags</h3>${btn("My clinician cleared all of these — flag all", { a: "flagall" }, { disabled: !S.clearance.ladder.clearance })}${exFlags}</section>
+    <ul class="checklist">${lad}</ul><h3>Per-exercise flags</h3>${btn("My clinician cleared the gym lifts — flag them all", { a: "flagall" }, { disabled: !S.clearance.ladder.clearance })}${exFlags}</section>
   <section class="card"><h2>Meal presets</h2><p class="muted small">Estimates — edit to match your brands and portions. Changing a preset doesn't rewrite meals you've already logged.</p>${presets}
     <div class="row" style="margin-top:8px"><label class="small muted" for="newslot">New preset for</label><select id="newslot">${L.SLOTS.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select>${btn("Add preset", { a: "addpreset" })}</div></section>
   <section class="card"><h2>Calorie boosters</h2>${boosters}</section>

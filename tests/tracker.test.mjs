@@ -65,7 +65,7 @@ test("Monday workout does not complete Wednesday; rest days don't lower adherenc
   for (const e of L.WORKOUTS.A) for (let i = 0; i < e.sets; i++) run(st, (s) => A.setSet(s, MON, e.id, i, "done"));
   assert.equal(L.workoutStatus(st.state, MON), "done");
   assert.equal(L.workoutStatus(st.state, WED), null);
-  assert.deepEqual(L.adherence(st.state, MON, SUN, SUN), { scheduled: 3, completed: 1, pct: 33 });
+  assert.deepEqual(L.adherence(st.state, MON, SUN, SUN), { scheduled: 5, completed: 1, pct: 20 });
   assert.equal(L.adherence(st.state, TUE, TUE, TUE).pct, null);
 });
 
@@ -218,16 +218,6 @@ test("yoga: four stages = yoga done; meditation separate", () => {
   assert.equal(L.derivedStatus(st.state, MON, item("meditation")), "done");
 });
 
-test("bulk flag needs documented clearance, then unlocks every upper-body exercise", () => {
-  const st = fresh();
-  const ids = L.UPPER_BODY.map((u) => u.id);
-  run(st, (s) => A.flagAllExercises(s, ids));
-  assert.ok(ids.every((id) => !L.isExerciseUnlocked(st.state, id)));
-  run(st, (s) => A.setLadder(s, "clearance", true));
-  run(st, (s) => A.flagAllExercises(s, ids));
-  assert.ok(ids.every((id) => L.isExerciseUnlocked(st.state, id)));
-  assert.ok(L.exercisesForDate(st.state, MON).some((e) => e.id === "u-press"));
-});
 
 test("readiness ticks are per-day and toggle", () => {
   const st = fresh();
@@ -238,91 +228,20 @@ test("readiness ticks are per-day and toggle", () => {
   assert.equal(L.getDay(st.state, MON).readiness, undefined);
 });
 
-test("set wave: +0/+1/+2 then deload, upper gentler, rehab items fixed", () => {
-  const st = fresh();
-  const squat = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "a-squat").sets;
-  const wk = (n) => L.addDays(MON, 7 * n);
-  assert.deepEqual([0, 1, 2, 3, 4].map((n) => squat(wk(n))), [3, 4, 8, 3, 3]);
-  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "a-lunge").sets, 5); // only the density lift jumps
-  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "a-squat").isDensity, true);
-  assert.equal(L.exercisesForDate(st.state, wk(1)).find((e) => e.id === "a-squat").isDensity, false);
-  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "a-heel").sets, 2);
-  assert.equal(L.waveInfo(st.state, wk(3)).deload, true);
-  assert.equal(L.waveInfo(st.state, wk(4)).reps, "10–12");
-  run(st, (s) => A.setLadder(s, "clearance", true));
-  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
-  const row = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "u-row").sets;
-  assert.deepEqual([0, 1, 2, 3].map((n) => row(wk(n))), [2, 3, 3, 2]);
-  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "u-iso").sets, 2);
-  assert.ok(L.exercisesForDate(st.state, wk(2)).filter((e) => e.clearanceRequired).every((e) => !e.isDensity && e.sets <= L.UPPER_BODY.find((u) => u.id === e.id).sets + 1)); // upper body never density
-});
 
-test("workout B density lift is chair squats in week 3", () => {
-  const st = fresh();
-  const wed = L.addDays(WED, 14);
-  assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-chair").sets, 8);
-  assert.equal(L.exercisesForDate(st.state, wed).find((e) => e.id === "b-split").sets, 5);
-});
 
-test("sissy squats are in workout B only, ramp gently, and aren't a density lift", () => {
-  const st = fresh();
-  const at = (date) => L.exercisesForDate(st.state, date).find((e) => e.id === "b-sissy");
-  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "b-sissy"), undefined);
-  const wed = (n) => L.addDays(WED, 7 * n);
-  assert.deepEqual([0, 1, 2, 3].map((n) => at(wed(n)).sets), [2, 3, 4, 2]);
-  assert.equal(at(wed(2)).isDensity, false);
-});
 
-test("no curls anywhere; upper work is split across A and B; triceps and rows on both", () => {
-  const st = fresh();
-  assert.ok(!L.UPPER_BODY.some((u) => /curl/i.test(u.name)));
-  run(st, (s) => A.setLadder(s, "clearance", true));
-  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
-  const ids = (d) => L.exercisesForDate(st.state, d).filter((e) => e.clearanceRequired).map((e) => e.id);
-  assert.ok(ids(MON).includes("u-press") && !ids(MON).includes("u-ohp") && !ids(MON).includes("u-pulldown"));
-  assert.ok(ids(WED).includes("u-ohp") && ids(WED).includes("u-pulldown") && !ids(WED).includes("u-press"));
-  for (const d of [MON, WED]) assert.ok(ids(d).includes("u-tri") && ids(d).includes("u-row"));
-});
 
-test("session order: warm-up → main leg → main upper → secondary → accessories; density lift moves first", () => {
-  const st = fresh();
-  run(st, (s) => A.setLadder(s, "clearance", true));
-  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
-  const ids = (d) => L.exercisesForDate(st.state, d).map((e) => e.id);
-  assert.deepEqual(ids(MON), ["a-heel", "u-iso", "u-band", "a-squat", "u-wall-push", "u-press", "a-lunge", "a-bridge", "u-row", "a-calf", "u-tri"]);
-  assert.deepEqual(ids(L.addDays(WED, 14)).slice(0, 5), ["b-march", "u-iso", "u-band", "b-chair", "b-split"]); // density lift first
-  assert.deepEqual(ids(WED).slice(0, 5), ["b-march", "u-iso", "u-band", "b-split", "u-pulldown"]);
-});
 
-test("push-up ladder shows one variant; progress needs the next to be cleared", () => {
-  const st = fresh();
-  run(st, (s) => A.setLadder(s, "clearance", true));
-  run(st, (s) => { A.setExerciseFlag(s, "u-wall-push", "cleared", true); A.setExerciseFlag(s, "u-wall-push", "painFree", true); });
-  const pushes = () => L.exercisesForDate(st.state, MON).filter((e) => L.LADDER_OF[e.id]).map((e) => e.id);
-  assert.deepEqual(pushes(), ["u-wall-push"]);
-  assert.equal(L.canProgress(st.state, "push"), false);
-  run(st, (s) => A.progress(s, "push", 1)); // refused
-  assert.deepEqual(pushes(), ["u-wall-push"]);
-  run(st, (s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)));
-  assert.deepEqual(pushes(), ["u-wall-push"]); // flags alone don't skip steps
-  run(st, (s) => A.progress(s, "push", 1));
-  assert.deepEqual(pushes(), ["u-incline-push"]);
-  run(st, (s) => A.progress(s, "push", 1));
-  assert.deepEqual(pushes(), ["u-push"]);
-  assert.equal(L.canProgress(st.state, "push"), false);
-  run(st, (s) => A.progress(s, "push", -1));
-  assert.deepEqual(pushes(), ["u-incline-push"]);
-  assert.equal(st.state.progression.push.history.length, 3);
-});
 
 test("load levels for non-ladder exercises go up and down within bounds", () => {
   const st = fresh();
-  run(st, (s) => A.progress(s, "a-squat", 1));
-  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "a-squat").level, 1);
-  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "a-squat", 1); });
-  assert.equal(L.progressLevel(st.state, "a-squat"), L.MAX_LOAD_LEVEL);
-  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "a-squat", -1); });
-  assert.equal(L.progressLevel(st.state, "a-squat"), 0);
+  run(st, (s) => A.progress(s, "g-squat", 1));
+  assert.equal(L.exercisesForDate(st.state, MON).find((e) => e.id === "g-squat").level, 1);
+  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "g-squat", 1); });
+  assert.equal(L.progressLevel(st.state, "g-squat"), L.MAX_LOAD_LEVEL);
+  run(st, (s) => { for (let i = 0; i < 20; i++) A.progress(s, "g-squat", -1); });
+  assert.equal(L.progressLevel(st.state, "g-squat"), 0);
 });
 
 test("nutrition migration updates untouched older presets only, and keeps user edits", () => {
@@ -356,4 +275,117 @@ test("supplement checklist items are manual and per-day", () => {
   run(st, (s) => A.setCheck(s, MON, "creatine", "done"));
   assert.equal(L.checklistStatus(st.state, MON, cr), "done");
   assert.equal(L.checklistStatus(st.state, TUE, cr), null);
+});
+
+test("bulk flag needs documented clearance, then unlocks gym lifts but not starters", () => {
+  const st = fresh();
+  const lifts = L.GYM_LIFTS.map((u) => u.id);
+  run(st, (s) => A.flagAllExercises(s, lifts));
+  assert.ok(lifts.every((id) => !L.isExerciseUnlocked(st.state, id)));
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, lifts));
+  assert.ok(lifts.every((id) => L.isExerciseUnlocked(st.state, id)));
+  assert.ok(L.UPPER_BODY.filter((u) => u.starter).every((u) => !L.isExerciseUnlocked(st.state, u.id)));
+  assert.ok(L.exercisesForDate(st.state, MON).some((e) => e.id === "u-bench"));
+});
+
+test("set wave on gym legs: +0/+1/+2 then deload; rehab items fixed; upper ramps gently", () => {
+  const st = fresh();
+  const wk = (n) => L.addDays(MON, 7 * n);
+  const sets = (date, id) => L.exercisesForDate(st.state, date).find((e) => e.id === id).sets;
+  assert.deepEqual([0, 1, 2, 3, 4].map((n) => sets(wk(n), "g-squat")), [3, 4, 8, 3, 3]); // week 3 = density
+  assert.deepEqual([0, 1, 2, 3].map((n) => sets(wk(n), "g-legcurl")), [2, 3, 4, 2]);
+  assert.equal(L.exercisesForDate(st.state, wk(2)).find((e) => e.id === "g-squat").isDensity, true);
+  assert.equal(L.exercisesForDate(st.state, wk(1)).find((e) => e.id === "g-squat").isDensity, false);
+  assert.equal(sets(L.addDays(TUE, 14), "a-heel"), 2); // rehab never ramps
+  assert.equal(L.waveInfo(st.state, wk(3)).deload, true);
+  assert.equal(L.waveInfo(st.state, wk(4)).reps, "10–12");
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.GYM_LIFTS.map((u) => u.id)));
+  assert.deepEqual([0, 1, 2, 3].map((n) => sets(wk(n), "u-row")), [3, 4, 4, 3]);
+  assert.ok(L.exercisesForDate(st.state, wk(2)).filter((e) => e.clearanceRequired).every((e) => !e.isDensity && e.sets <= L.UPPER_BODY.find((u) => u.id === e.id).sets + 1));
+});
+
+test("workout B: leg extension is the density lift; sissy squats ramp gently and are gym-B only", () => {
+  const st = fresh();
+  const wed = (n) => L.addDays(WED, 7 * n);
+  const find = (d, id) => L.exercisesForDate(st.state, d).find((e) => e.id === id);
+  assert.equal(find(wed(2), "g-ext").sets, 8);
+  assert.equal(find(wed(2), "g-split").sets, 5);
+  assert.deepEqual([0, 1, 2, 3].map((n) => find(wed(n), "b-sissy").sets), [2, 3, 4, 2]);
+  assert.equal(find(wed(2), "b-sissy").isDensity, false);
+  assert.equal(find(MON, "b-sissy"), undefined);
+  assert.equal(find(L.addDays(TUE, 14), "g-ext"), undefined); // gym lifts never appear on home days
+});
+
+test("no curls; gym upper split across A/B; home days use bodyweight + pull-up bar only", () => {
+  const st = fresh();
+  assert.ok(!L.ALL_EXERCISES().some((u) => /\bcurls?\b/i.test(u.name) && !/leg curl/i.test(u.name)));
+  assert.ok(!L.ALL_EXERCISES().some((u) => /chin-?up/i.test(u.name) && !/no chin/i.test(u.name)));
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.GYM_LIFTS.map((u) => u.id)));
+  const ids = (d) => L.exercisesForDate(st.state, d).map((e) => e.id);
+  assert.ok(ids(MON).includes("u-bench") && !ids(MON).some((i) => ["u-incdb", "u-pulldown", "u-ohp"].includes(i)));
+  assert.ok(["u-incdb", "u-pulldown", "u-ohp"].every((i) => ids(WED).includes(i)) && !ids(WED).includes("u-bench"));
+  for (const d of [MON, WED]) assert.ok(ids(d).includes("u-tri") && ids(d).includes("u-row"));
+  assert.ok(ids(TUE).includes("h-close") && !ids(TUE).includes("h-pike"));
+  assert.ok(ids(L.addDays(TUE, 2)).includes("h-pike")); // Thursday
+  assert.ok(!ids(TUE).some((i) => i.startsWith("u-") || i.startsWith("g-"))); // no gym machines at home
+});
+
+test("home schedule: Tue/Thu are loaded routines, Saturday is optional via override", () => {
+  const st = fresh();
+  assert.equal(L.routineForDate(st.state, TUE), "H1");
+  assert.equal(L.routineForDate(st.state, L.addDays(TUE, 2)), "H2");
+  const sat = L.addDays(MON, 5);
+  assert.equal(L.isLoadedRoutine(L.routineForDate(st.state, sat)), false);
+  run(st, (s) => A.setWorkoutOverride(s, sat, "H1"));
+  assert.ok(L.exercisesForDate(st.state, sat).length > 0);
+});
+
+test("session order: warm-up → main leg → main upper → secondary → accessories; density lift moves first", () => {
+  const st = fresh();
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  run(st, (s) => A.flagAllExercises(s, L.GYM_LIFTS.map((u) => u.id)));
+  const ids = (d) => L.exercisesForDate(st.state, d).map((e) => e.id);
+  assert.deepEqual(ids(MON), ["g-squat", "u-bench", "g-rdl", "u-row", "g-legcurl", "g-calf", "u-lat-raise", "u-tri"]);
+  assert.deepEqual(ids(WED), ["g-split", "u-incdb", "u-pulldown", "u-ohp", "g-thrust", "u-row", "g-ext", "b-sissy", "u-tri", "u-fly", "u-rear", "u-tri-oh"]);
+  assert.deepEqual(ids(L.addDays(WED, 14)).slice(0, 2), ["g-ext", "g-split"]); // density lift first while fresh
+});
+
+test("push-up ladder shows one variant; progress needs the next to be cleared", () => {
+  const st = fresh();
+  const flag = (id) => run(st, (s) => { A.setExerciseFlag(s, id, "cleared", true); A.setExerciseFlag(s, id, "painFree", true); });
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  flag("u-wall-push");
+  const pushes = () => L.exercisesForDate(st.state, MON).filter((e) => L.LADDER_OF[e.id]).map((e) => e.id);
+  assert.deepEqual(pushes(), ["u-wall-push"]);
+  assert.equal(L.canProgress(st.state, "push"), false);
+  run(st, (s) => A.progress(s, "push", 1)); // refused: incline not cleared
+  assert.deepEqual(pushes(), ["u-wall-push"]);
+  flag("u-incline-push"); flag("u-push");
+  assert.deepEqual(pushes(), ["u-wall-push"]); // flags alone don't skip steps
+  run(st, (s) => A.progress(s, "push", 1));
+  assert.deepEqual(pushes(), ["u-incline-push"]);
+  run(st, (s) => A.progress(s, "push", 1));
+  assert.deepEqual(pushes(), ["u-push"]);
+  assert.equal(L.canProgress(st.state, "push"), false);
+  run(st, (s) => A.progress(s, "push", -1));
+  assert.deepEqual(pushes(), ["u-incline-push"]);
+  assert.equal(st.state.progression.push.history.length, 3);
+});
+
+test("pull-up ladder: hang → scapular → band-assisted → pull-up, each step must be cleared", () => {
+  const st = fresh();
+  const flag = (id) => run(st, (s) => { A.setExerciseFlag(s, id, "cleared", true); A.setExerciseFlag(s, id, "painFree", true); });
+  run(st, (s) => A.setLadder(s, "clearance", true));
+  const pulls = () => L.exercisesForDate(st.state, TUE).filter((e) => L.LADDERS.pull.includes(e.id)).map((e) => e.id);
+  assert.deepEqual(pulls(), []); // nothing until you flag it
+  flag("h-hang");
+  assert.deepEqual(pulls(), ["h-hang"]);
+  run(st, (s) => A.progress(s, "pull", 1)); // refused
+  assert.deepEqual(pulls(), ["h-hang"]);
+  flag("h-scap"); flag("h-assist"); flag("h-pullup");
+  for (const want of ["h-scap", "h-assist", "h-pullup"]) { run(st, (s) => A.progress(s, "pull", 1)); assert.deepEqual(pulls(), [want]); }
+  assert.equal(L.canProgress(st.state, "pull"), false);
 });

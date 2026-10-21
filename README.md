@@ -144,6 +144,11 @@ as its own PWA.
   weekly means, which is dominated by water-weight noise.
 - Meal presets are planning estimates; changing one doesn't rewrite meals
   already logged. Boosters add nothing until foods are assigned.
+- **Training layout**: three full-body gym days (Mon/Wed/Fri: A, B, A) and
+  two home days (Tue/Thu: bodyweight + pull-up bar); Saturday can be made a
+  third home day from the routine picker. Sets follow a 4-week wave with a
+  leg-only density block in week 3. No curls or underhand pulling; pull-ups
+  are a hang → scapular → band-assisted → full ladder, cleared one step at a time.
 - Logic is in `public/tracker/logic.js` / `store.js` (pure, tested):
   `npm test`.
 

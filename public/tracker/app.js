@@ -119,7 +119,7 @@ function openLongMenu(t) {
     // setCheck toggles when the same status is re-chosen, so Clear passes null explicitly.
     showMenu(item.label, statuses((st) => act((s) => A.setCheck(s, date, d.id, st), `${item.label}: ${st || "cleared"}`), null, has).map((o) => ({ ...o, fn: () => { closeMenu(); o.fn(); } })));
   } else if (d.a === "set") {
-    const ex = [...L.WORKOUTS.A, ...L.WORKOUTS.B, ...L.UPPER_BODY].find((e) => e.id === d.ex);
+    const ex = L.ALL_EXERCISES().find((e) => e.id === d.ex);
     const has = !!L.getDay(S(), date).sets?.[L.setKey(d.ex, +d.i)];
     showMenu(`${ex.name} — set ${+d.i + 1}`, statuses((st) => act((s) => A.setSet(s, date, d.ex, +d.i, st), `Set ${+d.i + 1}: ${st || "cleared"}`), null, has).map((o) => ({ ...o, fn: () => { closeMenu(); o.fn(); } })));
   } else if (d.a === "stage") {
@@ -232,13 +232,13 @@ const handlers = {
   pstep(d) { act((s) => { s.profile[d.f] = Math.max(0, Math.round((s.profile[d.f] + +d.v) * 10) / 10); }, "Target updated"); },
   ladder(d) { const on = !!S().clearance.ladder[d.id]; if (!on && L.ladderStepAvailable(S(), L.LADDER.findIndex((l) => l.id === d.id)) === false) return; act((s) => A.setLadder(s, d.id, !on), on ? "Step reverted (later steps re-locked)" : "Step recorded"); },
   prog(d) {
-    const dir = +d.dir, name = L.LADDERS[d.key] ? "this exercise" : (L.WORKOUTS.A.concat(L.WORKOUTS.B, L.UPPER_BODY).find((e) => e.id === d.key)?.name || "this exercise");
+    const dir = +d.dir, name = L.LADDERS[d.key] ? "this exercise" : (L.ALL_EXERCISES().find((e) => e.id === d.key)?.name || "this exercise");
     if (dir > 0 && !L.canProgress(S(), d.key)) return toast(L.LADDERS[d.key] ? "The next variant isn't flagged cleared + pain-free in Settings yet." : "Already at the top level.", false);
     const go = () => { closeMenu(); act((s) => A.progress(s, d.key, dir), dir > 0 ? "Progressed" : "Backed off"); };
     if (dir < 0) return go();
     showMenu(`Progress ${name}?`, [{ label: "Yes — top of range on every set, 2+ reps left, no symptoms next day", fn: go }]);
   },
-  flagall: () => act((s) => A.flagAllExercises(s, L.UPPER_BODY.map((u) => u.id)), "All upper-body exercises flagged"),
+  flagall: () => act((s) => A.flagAllExercises(s, L.GYM_LIFTS.map((u) => u.id)), "Gym lifts flagged (starters and rehab items stay as they were)"),
   ready: (d) => act((s) => A.setReadiness(s, ui.date, d.id), "Readiness updated"),
   exflag(d) { act((s) => A.setExerciseFlag(s, d.id, d.f, !S().clearance.exercises[d.id]?.[d.f]), "Exercise flag updated"); },
   rcat: (d) => act((s) => { s.reminderCategories[d.id] = s.reminderCategories[d.id] === false; }, "Reminder category"),

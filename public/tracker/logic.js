@@ -67,50 +67,85 @@ export const BOOSTER_SUGGESTIONS = {
 
 // weekday index: 0 = Sunday … 6 = Saturday (JS Date.getDay)
 export const SCHEDULE = {
-  1: { routine: "A", label: "Workout A" },
-  2: { routine: "walk", label: "Recovery walk + evening routine" },
-  3: { routine: "B", label: "Workout B" },
-  4: { routine: "walk", label: "Recovery walk + evening routine" },
-  5: { routine: "A", label: "Workout A" },
-  6: { routine: "walk", label: "Easy walk / gentle mobility" },
+  1: { routine: "A", label: "Gym: Workout A" },
+  2: { routine: "H1", label: "Home workout 1 (bodyweight + pull-up bar)" },
+  3: { routine: "B", label: "Gym: Workout B" },
+  4: { routine: "H2", label: "Home workout 2 (bodyweight + pull-up bar)" },
+  5: { routine: "A", label: "Gym: Workout A" },
+  6: { routine: "walk", label: "Easy walk / gentle mobility (optional home workout)" },
   0: { routine: "rest", label: "Rest + meal prep" },
 };
+export const ROUTINE_LABEL = { A: "Gym A", B: "Gym B", H1: "Home 1", H2: "Home 2", walk: "Walk", rest: "Rest" };
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function ex(id, name, sets, reps, extra = {}) {
   return { id, name, sets, reps, phase: 1, clearanceRequired: false, ...extra };
 }
 export const WORKOUTS = {
+  // Gym days (full gym). Density lifts are chosen to spare the elbow and neck.
   A: [
-    ex("a-squat", "Slow bodyweight squats", 3, "12–20", { density: true }),
+    ex("g-squat", "Leg press (or goblet / safety-bar squat)", 3, "8–12", { density: true }),
+    ex("g-rdl", "Romanian deadlift", 3, "8–12", { cue: "Double-overhand grip or straps. Never a mixed (one palm up) grip: that is the classic way to injure the distal biceps." }),
+    ex("g-legcurl", "Seated or lying leg curl", 2, "10–15"),
+    ex("g-calf", "Standing or seated calf raise", 3, "10–15"),
+  ],
+  B: [
+    ex("g-split", "Dumbbell split squat", 3, "8–12"),
+    ex("g-thrust", "Hip thrust (barbell or machine)", 3, "8–12"),
+    ex("g-ext", "Leg extension", 3, "10–15", { density: true }),
+    ex("b-sissy", "Sissy squats (assisted, partial range)", 2, "6–10", { cue: "Hold a post lightly with your LEFT hand only; keep the right arm relaxed and your neck neutral. Start shallow, lean back, knees travel forward. Stop if the front of the knee hurts." }),
+  ],
+  // Home days: bodyweight legs; the upper-body part comes from UPPER_BODY (days H1/H2).
+  H1: [
+    ex("a-squat", "Slow bodyweight squats", 3, "12–20"),
     ex("a-lunge", "Reverse lunges", 3, "8–12 per leg"),
     ex("a-bridge", "Glute bridges", 3, "15–20"),
     ex("a-calf", "Calf raises", 3, "20"),
     ex("a-heel", "Supine heel slides", 2, "10 per leg", { noRamp: true }),
   ],
-  B: [
-    ex("b-split", "Split squats", 3, "8–12 per leg"),
-    ex("b-chair", "Slow chair squats", 3, "12", { density: true }),
-    ex("b-sissy", "Sissy squats (assisted, partial range)", 2, "6–10", { cue: "Hold a post lightly with your LEFT hand only; keep the right arm relaxed and your neck neutral. Start shallow, lean back, knees travel forward. Stop if the front of the knee hurts." }),
+  H2: [
+    ex("b-split", "Bodyweight split squats", 3, "8–12 per leg"),
+    ex("b-chair", "Slow chair squats", 3, "12"),
     ex("b-sl-bridge", "Single-leg glute bridges", 3, "8 per leg"),
     ex("b-wall", "Wall sit", 3, "30–45 sec"),
     ex("b-march", "Supine marching", 2, "12", { noRamp: true }),
   ],
 };
+export const ALL_EXERCISES = () => [...Object.values(WORKOUTS).flat(), ...UPPER_BODY];
 // Locked until clinician clearance + per-exercise flags (see isExerciseUnlocked).
 // Set/rep numbers are placeholders for a clinician to overwrite, not prescriptions.
+// Full-gym upper-body list. "starter" items (rehab / bodyweight steps) are never
+// flagged by the bulk button; flag them one by one if you want them.
 export const UPPER_BODY = [
-  ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
-  ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 2, clearanceRequired: true, noRamp: true }),
-  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 2, clearanceRequired: true, days: ["A"] }),
-  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 3, clearanceRequired: true, days: ["A"] }),
-  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 4, clearanceRequired: true, days: ["A"] }),
-  ex("u-press", "Dumbbell floor press (neutral grip)", 2, "8–12", { phase: 3, clearanceRequired: true, days: ["A"] }),
-  ex("u-tri", "Triceps pushdowns (cable or band)", 2, "10–15", { phase: 3, clearanceRequired: true }),
-  ex("u-row", "Light rows (neutral grip, chest-supported if possible)", 2, "8–12", { phase: 3, clearanceRequired: true }),
-  ex("u-pulldown", "Lat pulldown (neutral grip, never underhand)", 2, "8–12", { phase: 3, clearanceRequired: true, days: ["B"] }),
-  ex("u-ohp", "Light overhead press (neutral grip, stop if neck/traps complain)", 2, "8–10", { phase: 4, clearanceRequired: true, days: ["B"] }),
+  ex("u-iso", "Light elbow isometrics (clinician-approved)", 2, "as directed", { phase: 1, clearanceRequired: true, noRamp: true, starter: true }),
+  ex("u-band", "Light band work (clinician-approved)", 2, "as directed", { phase: 1, clearanceRequired: true, noRamp: true, starter: true }),
+  ex("u-wall-push", "Wall push-ups", 2, "8–12", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
+  ex("u-incline-push", "Incline push-ups", 2, "6–10", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
+  ex("u-push", "Standard push-ups", 3, "6–12", { phase: 1, clearanceRequired: true, days: ["A", "H1", "H2"], starter: true }),
+  // Home pull-up-bar ladder. Overhand or neutral grip only: no chin-ups, no slow negatives.
+  ex("h-hang", "Dead hangs (overhand or neutral grip)", 2, "20–30 sec", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true, noRamp: true }),
+  ex("h-scap", "Scapular pull-ups (shoulder blades only, elbows stay straight)", 2, "8–12", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
+  ex("h-assist", "Band-assisted pull-ups (overhand or neutral grip)", 2, "4–8", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
+  ex("h-pullup", "Pull-ups (overhand or neutral grip, no chin-ups)", 2, "3–8", { phase: 1, clearanceRequired: true, days: ["H1", "H2"], starter: true }),
+  // Home push accessories
+  ex("h-close", "Close-grip push-ups (triceps)", 2, "6–12", { phase: 1, clearanceRequired: true, days: ["H1"] }),
+  ex("h-pike", "Pike push-ups (shoulders; stop if neck/traps complain)", 2, "5–10", { phase: 1, clearanceRequired: true, days: ["H2"] }),
+  // Workout A (Mon, Fri)
+  ex("u-bench", "Bench press (barbell, or dumbbells with neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["A"] }),
+  ex("u-lat-raise", "Dumbbell lateral raise", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["A"] }),
+  // Both days
+  ex("u-row", "Chest-supported row (neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["A", "B"] }),
+  ex("u-tri", "Triceps pushdowns (cable or band)", 2, "10–15", { phase: 1, clearanceRequired: true, days: ["A", "B"] }),
+  // Workout B (Wed)
+  ex("u-incdb", "Incline dumbbell press (neutral grip)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-pulldown", "Lat pulldown (neutral grip, never underhand)", 3, "8–12", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-ohp", "Seated dumbbell shoulder press (neutral grip; stop if neck/traps complain)", 2, "8–10", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-fly", "Cable fly or pec-deck (light, soft elbows)", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-rear", "Rear-delt fly (cable or machine)", 2, "12–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
+  ex("u-tri-oh", "Overhead cable triceps extension", 2, "10–15", { phase: 1, clearanceRequired: true, days: ["B"] }),
 ];
+// Non-starter lifts, flagged by the bulk button (starters and the pull-up ladder are flagged one by one).
+export const GYM_LIFTS = UPPER_BODY.filter((u) => !u.starter);
 
 // Quick pre-session check before any cleared upper-body work. Advisory: it
 // recommends lower-body only if anything is unticked; it never clears anything.
@@ -122,7 +157,7 @@ export const READINESS = [
 
 // Progression ladders (easier → harder variants of the same movement). The shown
 // variant follows state.progression, but never one that isn't cleared + pain-free.
-export const LADDERS = { push: ["u-wall-push", "u-incline-push", "u-push"] };
+export const LADDERS = { push: ["u-wall-push", "u-incline-push", "u-push"], pull: ["h-hang", "h-scap", "h-assist", "h-pullup"] };
 export const LADDER_OF = Object.fromEntries(Object.entries(LADDERS).flatMap(([k, ids]) => ids.map((id) => [id, k])));
 export const MAX_LOAD_LEVEL = 10;
 
@@ -130,17 +165,19 @@ export const MAX_LOAD_LEVEL = 10;
 // 4 secondary → 5 accessories. A density lift is moved up to 1.5 (fresh legs).
 const STAGE = {
   "u-iso": 1, "u-band": 1, "a-heel": 1, "b-march": 1,
-  "a-squat": 2, "b-split": 2,
-  "u-wall-push": 3, "u-incline-push": 3, "u-push": 3, "u-press": 3, "u-pulldown": 3, "u-ohp": 3,
-  "a-lunge": 4, "a-bridge": 4, "b-chair": 4, "b-sl-bridge": 4, "u-row": 4,
-  "u-tri": 5, "a-calf": 5, "b-sissy": 5, "b-wall": 5,
+  "g-squat": 2, "g-split": 2, "a-squat": 2, "b-split": 2,
+  "u-wall-push": 3, "u-incline-push": 3, "u-push": 3, "u-bench": 3, "u-incdb": 3, "u-pulldown": 3, "u-ohp": 3,
+  "h-hang": 3, "h-scap": 3, "h-assist": 3, "h-pullup": 3,
+  "g-rdl": 4, "g-thrust": 4, "a-lunge": 4, "a-bridge": 4, "b-chair": 4, "b-sl-bridge": 4, "u-row": 4,
+  "u-tri": 5, "u-tri-oh": 5, "u-lat-raise": 5, "u-fly": 5, "u-rear": 5, "h-close": 5, "h-pike": 5,
+  "g-legcurl": 5, "g-ext": 5, "g-calf": 5, "a-calf": 5, "b-sissy": 5, "b-wall": 5,
 };
 
 export const REST_OPTIONS = [45, 60, 90, 120, 180];
 
 export const PHASES = [
-  { n: 1, name: "Protect", weeks: "1–2", plan: "Three lower-body/core workouts per week; gentle pain-free elbow/wrist movement; no resisted curls", gate: "Everyday movement comfortable; no worsening symptoms" },
-  { n: 2, name: "Reintroduce", weeks: "3–4, if cleared", plan: "Continue legs; clinician-approved very light upper-body isometrics / wall push-ups / band work only if appropriate", gate: "Significant tendon injury excluded; no symptoms during/next day" },
+  { n: 1, name: "Protect", weeks: "1–2", plan: "Three full-body workouts per week: legs plus cleared pushing and pulling (neutral grips, no curls). Effort stays at about 3 reps in reserve", gate: "No symptoms during or the day after training; everyday movement comfortable" },
+  { n: 2, name: "Reintroduce", weeks: "3–4, if cleared", plan: "Same sessions; add load in small steps (about 2 reps in reserve) and the first extra set of upper-body work", gate: "No symptoms during/next day; neck and elbow stay quiet at the new loads" },
   { n: 3, name: "Build", weeks: "5–8, if tolerated", plan: "Three full-body sessions; gradual incline push-ups, light rows and harder leg work", gate: "Consistent comfortable motion and loading" },
   { n: 4, name: "Progress", weeks: "9–13, if tolerated", plan: "Three progressive full-body sessions; optional fourth short session; add load/reps gradually", gate: "No recurrence of elbow or neck pain" },
 ];
@@ -241,11 +278,11 @@ export function defaultReminders() {
     mk("meal-shake", "meal", "Weight-gain shake", "15:30", all),
     mk("meal-dinner", "meal", "Dinner", "18:30", all),
     mk("meal-snack", "meal", "Greek yogurt snack", "20:30", all),
-    mk("wk-mon", "workout", "Workout A", "17:30", [1]),
-    mk("wk-tue", "workout", "Recovery walk + evening routine", "20:30", [2]),
-    mk("wk-wed", "workout", "Workout B", "17:30", [3]),
-    mk("wk-thu", "workout", "Recovery walk + evening routine", "20:30", [4]),
-    mk("wk-fri", "workout", "Workout A", "17:30", [5]),
+    mk("wk-mon", "workout", "Gym: Workout A", "17:30", [1]),
+    mk("wk-tue", "workout", "Home workout 1", "17:30", [2]),
+    mk("wk-wed", "workout", "Gym: Workout B", "17:30", [3]),
+    mk("wk-thu", "workout", "Home workout 2", "17:30", [4]),
+    mk("wk-fri", "workout", "Gym: Workout A", "17:30", [5]),
     mk("wk-sat", "workout", "Easy walk / gentle mobility", "10:00", [6]),
     mk("wk-sun", "workout", "Rest + meal prep", "16:00", [0]),
     mk("evening", "evening", "Evening yoga + meditation", "21:00", all),
@@ -298,7 +335,7 @@ export function routineForDate(state, date) {
   const override = getDay(state, date).workout?.override;
   return override || SCHEDULE[weekdayOf(date)].routine;
 }
-export const isLoadedRoutine = (r) => r === "A" || r === "B";
+export const isLoadedRoutine = (r) => r === "A" || r === "B" || r === "H1" || r === "H2";
 
 export function isExerciseUnlocked(state, id) {
   const ex = state.clearance.exercises[id];
