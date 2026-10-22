@@ -8,10 +8,13 @@ import { startScheduler, snooze, skipToday, notify, askPermission } from "./remi
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, customKcal: 200, customProtein: 10, rest: null, restLen: 60, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, customKcal: 200, customProtein: 10, rest: null, restLen: 60, autoRest: true, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
+// Older saves used restLen 0 for "off": translate that, and keep the length in sane 15 s steps.
+if (ui.restLen === 0) { ui.autoRest = false; ui.restLen = 60; }
+ui.restLen = Math.min(300, Math.max(15, Math.round((ui.restLen || 60) / 15) * 15));
 ui.date = L.ymd(); // always open on today
-const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen, guided: ui.guided })); } catch {} };
+const saveUi = () => { try { localStorage.setItem("gain-tracker-ui", JSON.stringify({ tab: ui.tab, restLen: ui.restLen, autoRest: ui.autoRest, guided: ui.guided })); } catch {} };
 
 // ---------- helpers ----------
 
@@ -156,9 +159,9 @@ function tickTimers() {
   const now = Date.now();
   if (ui.rest) {
     const left = ui.rest.endAt - now;
-    const el = $("#rtime");
     if (left <= 0) { ui.rest = null; beep(); toast("Rest over — next set", false); render(); return; }
-    if (el) el.textContent = `Rest ${mmss(left)}`;
+    document.querySelectorAll("[data-rtime]").forEach((el) => { el.textContent = mmss(left); });
+    document.querySelectorAll("[data-rfill]").forEach((el) => { el.style.width = `${Math.max(0, (100 * left) / ui.rest.total)}%`; });
   }
   if (ui.yoga) {
     const y = ui.yoga;
@@ -270,7 +273,7 @@ const handlers = {
     ui.popFk = d.g ? "guided-go" : `set-${d.ex}-${d.i}`;
     act((s) => { if (was && was !== "done") A.setSet(s, ui.date, d.ex, +d.i, null); A.setSet(s, ui.date, d.ex, +d.i, "done"); }, `Set ${+d.i + 1}`);
     // Marking done (not un-marking) starts the rest timer if enabled.
-    if (was !== "done" && ui.restLen) { ui.rest = { endAt: Date.now() + ui.restLen * 1000 }; render(); }
+    if (was !== "done" && ui.autoRest !== false) { ui.rest = { endAt: Date.now() + ui.restLen * 1000, total: ui.restLen * 1000, ex: d.ex }; render(); }
   },
   lstep(d) {
     const cur = ui.loadDraft[d.ex] ?? L.getDay(S(), ui.date).loads?.[d.ex]?.lb ?? L.loadHistory(S(), d.ex, ui.date).last?.lb ?? 0;
@@ -313,8 +316,11 @@ const handlers = {
     const k = ui.customKcal, p = ui.customProtein;
     act((s) => A.addExtra(s, ui.date, { foodId: "custom", name: "Other food", serving: "", calories: k, protein: p }), `Other food: ${k} kcal added`);
   },
-  restlen(d) { ui.restLen = +d.v; saveUi(); if (!ui.restLen) ui.rest = null; render(); },
-  restcancel() { ui.rest = null; render(); },
+  rstart(d) { ui.rest = { endAt: Date.now() + ui.restLen * 1000, total: ui.restLen * 1000, ex: d.ex }; render(); },
+  rstep(d) { ui.restLen = Math.min(300, Math.max(15, ui.restLen + +d.v)); saveUi(); render(); },
+  radd() { if (ui.rest) { ui.rest.endAt += 30000; ui.rest.total += 30000; render(); } },
+  rskip() { ui.rest = null; render(); },
+  rauto() { ui.autoRest = ui.autoRest === false; saveUi(); render(); },
   provoked() { ui.painTod = "after"; ui.rest = null; toast("Stop the workout. Log how it feels below.", false); goTab("recovery"); },
 
   // pain

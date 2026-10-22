@@ -284,3 +284,13 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .checklist button.item > span:nth-child(2) { flex: 1; min-width: 0; }
 .checklist .state { min-width: 0; white-space: nowrap; text-align: right; font-size: .88rem; }
 @media (max-width: 340px) { .checklist button.item { font-size: .86rem; gap: 5px; } .checklist .state { font-size: .78rem; } .checklist .glyph { width: 1.1em; } }
+
+/* ---- rest timer inside each workout tile ---- */
+.reststrip { margin-top: 10px; padding: 10px; border-radius: 14px; background: var(--surface-2); box-shadow: inset 0 1px 3px rgba(16, 24, 40, .1); }
+.reststrip .restgrid { grid-template-columns: 1fr 1.7fr 1fr; align-items: center; }
+.reststrip button.restgo { background: linear-gradient(var(--card), var(--surface-2)); font-weight: 700; }
+.reststrip.running { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); box-shadow: inset 0 0 0 2px var(--ring); }
+.rbar { height: 8px; border-radius: 6px; background: color-mix(in srgb, var(--fg, #1a1a1a) 12%, transparent); overflow: hidden; margin-bottom: 8px; }
+.rbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 6px; }
+.rtime { text-align: center; font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.exblock .reststrip { margin-top: 8px; }

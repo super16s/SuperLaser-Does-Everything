@@ -584,3 +584,31 @@ test("extras work alongside presets and boosters in the day total, and render", 
   assert.match(html, /Anything else you ate/);
   assert.match(html, /Peanut butter/);
 });
+
+test("workout screen: progress scene sits above the tiles; rest timer lives inside the tiles, not at the top", async () => {
+  const V = await import("../public/tracker/views.js");
+  const st = fresh();
+  const exs = L.exercisesForDate(st.state, MON);
+  const base = { tab: "workout", date: MON, painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, rest: null, restLen: 60, autoRest: true, yoga: null, banners: [], guided: false, customKcal: 200, customProtein: 10 };
+  const list = V.workout(st.state, base);
+  assert.ok(!/Auto-rest after a set|id="rest-box"/.test(list), "old global timer is gone");
+  assert.equal((list.match(/class="reststrip/g) || []).length, exs.length, "one rest strip per exercise tile");
+  const at = (html, re) => html.search(re);
+  assert.ok(at(list, /class="alert info"/) < at(list, /class="hero/) && at(list, /class="hero/) < at(list, /class="exblock/), "week note → progress scene → tiles");
+  const guided = V.workout(st.state, { ...base, guided: true });
+  assert.equal((guided.match(/class="reststrip/g) || []).length, 1, "guided mode: one strip, on the card");
+  assert.ok(at(guided, /class="hero/) < at(guided, /class="strip"/) && at(guided, /class="strip"/) < at(guided, /class="guided/), "scene → section bar → card");
+  assert.match(guided, /Auto-rest after each set: On/);
+  assert.match(V.workout(st.state, { ...base, guided: true, autoRest: false }), /Auto-rest after each set: Off/);
+  assert.match(list, /⏱ Rest 1 min/);
+  assert.match(V.workout(st.state, { ...base, restLen: 90 }), /⏱ Rest 1:30/);
+  // running timer shows only in the tile where the last set was tapped (list) and on the card (guided)
+  const run = { endAt: Date.now() + 45000, total: 60000, ex: exs[1].id };
+  const listRun = V.workout(st.state, { ...base, rest: run });
+  assert.equal((listRun.match(/class="reststrip running/g) || []).length, 1);
+  assert.match(listRun, /data-rtime>0:4[45]</);
+  assert.equal((V.workout(st.state, { ...base, guided: true, rest: run }).match(/class="reststrip running/g) || []).length, 1);
+  // walk day: scene still comes first, then the walk card
+  const sat = V.workout(st.state, { ...base, date: L.addDays(MON, 5) });
+  assert.ok(at(sat, /class="hero/) < at(sat, /<h2>Walk/));
+});

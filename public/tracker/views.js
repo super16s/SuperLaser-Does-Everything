@@ -152,6 +152,21 @@ function heroHtml(S, ui, label, countText, dp) {
       ${wkAd.scheduled ? `<div class="muted small">This week: ${wkAd.completed} of ${wkAd.scheduled} workouts done</div>` : ""}</div>`;
 }
 
+const mmssV = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+const fmtRest = (sec) => (sec % 60 === 0 ? `${sec / 60} min` : sec > 60 ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` : `${sec}s`);
+// The rest timer lives inside each tile. In guided mode it shows on the one card; in list mode only on the tile where the last set was tapped.
+function restStrip(ui, e, withAuto) {
+  const run = ui.rest && (ui.guided || !ui.rest.ex || ui.rest.ex === e.id);
+  if (run) {
+    const left = ui.rest.endAt - Date.now(), pct = Math.max(0, Math.min(100, (100 * left) / ui.rest.total));
+    return `<div class="reststrip running" role="timer" aria-label="Rest timer"><div class="rbar"><i data-rfill style="width:${pct}%"></i></div>
+      <div class="grid-btns restgrid">${btn("Skip", { a: "rskip" }, { aria: "Skip rest" })}<div class="rtime" data-rtime>${mmssV(left)}</div>${btn("+30s", { a: "radd" }, { aria: "Add 30 seconds" })}</div></div>`;
+  }
+  const len = ui.restLen || 60;
+  return `<div class="reststrip"><div class="grid-btns restgrid">${btn("−15s", { a: "rstep", v: -15 }, { aria: "Shorter rest" })}${btn(`⏱ Rest ${fmtRest(len)}`, { a: "rstart", ex: e.id }, { cls: "restgo", aria: `Start a ${fmtRest(len)} rest timer` })}${btn("+15s", { a: "rstep", v: 15 }, { aria: "Longer rest" })}</div>
+    ${withAuto ? `<div class="center">${btn(ui.autoRest === false ? "Auto-rest after each set: Off" : "Auto-rest after each set: On ✓", { a: "rauto" }, { cls: "link" })}</div>` : ""}</div>`;
+}
+
 function guided(S, ui, exs) {
   const date = ui.date, day = L.getDay(S, date), cur = L.nextSet(S, date), last = L.lastLoggedSet(S, date);
   const pctOf = (e) => Math.round((100 * Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length) / e.sets);
@@ -167,6 +182,7 @@ function guided(S, ui, exs) {
     ${e.loaded ? loadRow(S, ui, e) : ""}
     <div class="setno">Set ${i + 1} <span>of ${e.sets}</span></div>
     <button type="button" class="primary giant" data-a="set" data-ex="${e.id}" data-i="${i}" data-g="1" data-fk="guided-go" aria-label="Complete ${esc(e.name)} set ${i + 1} of ${e.sets}">✓ Complete set</button>
+    ${restStrip(ui, e, true)}
     <div class="muted small" style="margin-top:6px">${nextTxt}</div>${nav}</div>`;
 }
 
@@ -210,7 +226,7 @@ export function workout(S, ui) {
     const wkPct = dp.pct;
     const headline = heroHtml(S, ui, "Today's workout", `<strong>${prog.done}</strong> / ${prog.total} sets${L.hasWalk(routine) ? ` · walk ${dp.walk}/${L.WALK_TARGET} min` : ""}`, dp);
     const modeToggle = `<div class="chips" role="group" aria-label="Workout view" style="margin:8px 0">${btn("Guided: tap through", { a: "gmode", v: 1 }, { on: ui.guided })}${btn("List: all sets", { a: "gmode", v: 0 }, { on: !ui.guided })}</div>`;
-    body = `${headline}${L.hasWalk(routine) ? walkCard(S, ui, routine) : ""}${wave}${readiness}${modeToggle}
+    body = `${wave}${readiness}${modeToggle}${headline}${L.hasWalk(routine) ? walkCard(S, ui, routine) : ""}
     ${ui.guided ? guided(S, ui, exs) : exs.map((e) => {
       const exDone = Array.from({ length: e.sets }, (_, i) => day.sets?.[L.setKey(e.id, i)]?.status === "done").filter(Boolean).length, exPct = Math.round((100 * exDone) / e.sets);
       return `<div class="exblock${exPct === 100 ? " complete" : ""}" style="margin:12px 0"><div class="pbar mini" aria-hidden="true"><div class="pfill" data-key="${date}|ex-${e.id}" data-pct="${exPct}" style="width:${exPct}%"></div></div><strong>${esc(e.name)}</strong>${exPct === 100 ? ` <span class="state s-done">✓ Complete</span>` : ""} <span class="muted">${e.sets} × ${esc(e.reps)}</span>${e.isDensity ? ` <span class="state s-partial">Density block: rest 60–90 s</span>` : ""}${e.cue ? `<div class="muted small">${esc(e.cue)}</div>` : ""}
@@ -219,7 +235,7 @@ export function workout(S, ui) {
       <div class="setgrid" style="margin-top:6px">${Array.from({ length: e.sets }, (_, i) => {
         const st = day.sets?.[L.setKey(e.id, i)]?.status || "none";
         return `<button type="button" data-a="set" data-ex="${e.id}" data-i="${i}" data-long="1" data-fk="set-${e.id}-${i}" aria-pressed="${st === "done"}" aria-label="${esc(e.name)} set ${i + 1} of ${e.sets}: ${STATE_TEXT[st]}. Long-press for more."><span aria-hidden="true">${st === "done" ? "" : GLYPH[st]}</span> Set ${i + 1} of ${e.sets}${st !== "none" && st !== "done" ? ` (${STATE_TEXT[st]})` : ""}</button>`;
-      }).join("")}</div></div>`;
+      }).join("")}</div>${restStrip(ui, e, false)}</div>`;
     }).join("")}
     <div class="alert">Stop if neck or elbow symptoms are provoked. Keep arms relaxed, neck neutral, and don't support weight on the injured arm.
       <div style="margin-top:8px">${btn("Symptoms provoked — stop & check in", { a: "provoked" }, { cls: "danger" })}</div></div>
@@ -229,10 +245,6 @@ export function workout(S, ui) {
     <div class="row">${btn(skipped ? "Workout skipped (tap to undo)" : "Skip today's workout", { a: "skipworkout" }, { on: !!skipped })}</div>`;
   }
   return `<section class="card"><h2>${esc(sched.label)}${ov ? ` → <em>${L.ROUTINE_LABEL[ov]}</em>` : ""}</h2>${picker}
-    <div id="rest-box" class="row" style="margin:10px 0"><span class="timer" id="rtime" aria-live="off">${ui.rest ? "" : ""}</span>
-      ${ui.rest ? btn("Cancel rest", { a: "restcancel" }) : ""}</div>
-    <div class="muted small" style="margin:10px 0 6px">Auto-rest after a set</div>
-    <div class="grid-btns" style="--n:6" role="group" aria-label="Rest timer length">${[0, ...L.REST_OPTIONS].map((n) => btn(n ? (n >= 120 ? `${n / 60}m` : `${n}s`) : "Off", { a: "restlen", v: n }, { on: ui.restLen === n })).join("")}</div>
     ${body}</section>
     <section class="card"><h2>Training rules</h2>
       <ul class="small" style="padding-left:18px;margin:0"><li>No bicep curls, chin-ups or other underhand pulling. Rows, pulldowns and pull-ups are overhand or neutral grip.</li>
