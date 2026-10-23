@@ -3,7 +3,7 @@
 import { createStore, actions as A } from "./store.js";
 import * as L from "./logic.js";
 import * as V from "./views.js";
-import { CELE, pixelIcon } from "./sprites.js";
+import { CELE, pixelIcon, victorySvg } from "./sprites.js";
 import { startScheduler, snooze, skipToday, notify, askPermission } from "./reminders.js";
 
 const store = createStore();
@@ -111,7 +111,7 @@ function animateBars() {
   const g = document.querySelector(".guided[data-gkey]");
   if (g) { if (motion && ui.prevG && ui.prevG !== g.dataset.gkey) g.classList.add("enter"); ui.prevG = g.dataset.gkey; }
   if (ui.popFk) { document.querySelector(`[data-fk="${CSS.escape(ui.popFk)}"]`)?.classList.add("tap-pop"); ui.popFk = null; }
-  if (confetti) { launchConfetti(); try { navigator.vibrate?.([30, 40, 60]); } catch {} }
+  if (confetti) { launchFinale(); try { navigator.vibrate?.([30, 40, 60, 40, 120]); } catch {} }
 }
 // Each Today action plays its own little pixel celebration when it flips to done:
 // the card's icon pops and particles burst or rise around it.
@@ -140,17 +140,37 @@ function celebrate(el, kind) {
   setTimeout(() => box.remove(), 1900);
   try { navigator.vibrate?.(20); } catch {}
 }
-function launchConfetti() {
+// Workout complete: pixel flames climb until they fill the screen while the muscle man raises a victorious fist.
+// (The classic "demo-scene" fire: each cell passes heat upward, losing a little at random.)
+function launchFinale() {
+  if (reduceMotion() || document.querySelector(".finale")) return;
   const box = document.createElement("div");
-  box.className = "confetti"; box.setAttribute("aria-hidden", "true");
-  const colors = ["#3fbf94", "#2f6fed", "#f0953f", "#e8c547", "#d9548a"];
-  for (let i = 0; i < 36; i++) {
-    const c = document.createElement("i");
-    c.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-delay:${Math.random() * 0.35}s;--drift:${(Math.random() - 0.5) * 120}px;--spin:${Math.random() * 720 - 360}deg`;
-    box.append(c);
-  }
+  box.className = "finale"; box.setAttribute("aria-hidden", "true");
+  box.innerHTML = `<canvas></canvas><div class="fin-man">${victorySvg(7)}</div><div class="fin-text">WORKOUT COMPLETE</div>`;
   document.body.append(box);
-  setTimeout(() => box.remove(), 2600);
+  const CELL = 8, W = Math.ceil(innerWidth / CELL), H = Math.ceil(innerHeight / CELL), MAXI = Math.ceil(H * 0.46);
+  const cv = box.querySelector("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d"), img = ctx.createImageData(W, H), fire = new Uint8Array(W * H);
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  // heat → colour: dark red at the tips, orange, yellow, white-hot at the base
+  const pal = Array.from({ length: MAXI + 1 }, (_, i) => { const t = i / MAXI; return [clamp(255 * Math.min(1, t * 2.4)), clamp(255 * (t * 2.6 - 0.75)), clamp(255 * (t * 3 - 2.3)), i ? clamp(t * 520) : 0]; });
+  const t0 = performance.now();
+  const timer = setInterval(() => {
+    const el = performance.now() - t0;
+    const k = el < 1300 ? el / 1300 : el < 2500 ? 1 : Math.max(0, 1 - (el - 2500) / 1200); // climb, roar, die down
+    for (let x = 0; x < W; x++) fire[(H - 1) * W + x] = Math.round(MAXI * k);
+    for (let y = H - 1; y >= 1; y--) for (let x = 0; x < W; x++) { // bottom-up in one pass: heat reaches the top every frame
+      const src = y * W + x, heat = fire[src];
+      if (!heat) { fire[src - W] = 0; continue; }
+      const r = Math.floor(Math.random() * 3), dst = Math.min(W * H - 1, Math.max(W, src - r + 1));
+      fire[dst - W] = heat - (r & 1);
+    }
+    for (let i = 0; i < W * H; i++) { const c = pal[fire[i]], o = i * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = c[3]; }
+    ctx.putImageData(img, 0, 0);
+  }, 40);
+  const close = () => { clearInterval(timer); box.remove(); };
+  box.addEventListener("click", close);
+  setTimeout(close, 4400);
 }
 
 // ---------- timers ----------
@@ -380,7 +400,7 @@ const handlers = {
   bsuggest: (d) => act((s) => { const b = s.boosters.find((x) => x.id === d.id); b.foods = d.foods; b.protein = +d.p; }, "Booster assigned"),
   rmpreset(d) {
     const p = S().mealPresets.find((x) => x.id === d.id);
-    if (S().mealPresets.filter((x) => x.slot === p.slot).length < 2) return toast("Each meal slot needs at least one preset.", false);
+    if (L.presetSlots(p).some((sl) => S().mealPresets.filter((x) => L.inSlot(x, sl)).length < 2)) return toast("Each meal slot needs at least one meal.", false);
     act((s) => { s.mealPresets = s.mealPresets.filter((x) => x.id !== d.id); }, "Preset deleted");
   },
   addidea(d) {
@@ -437,9 +457,9 @@ document.addEventListener("change", async (e) => {
       const val = NUMERIC.has(d.f) ? Math.max(0, Number(t.value) || 0) : t.value;
       if (d.f === "slot") {
         const p = S().mealPresets.find((x) => x.id === d.id);
-        if (S().mealPresets.filter((x) => x.slot === p.slot).length < 2) { toast("Each meal slot needs at least one preset.", false); render(); break; }
+        if (L.presetSlots(p).some((sl) => S().mealPresets.filter((x) => L.inSlot(x, sl)).length < 2)) { toast("Each meal slot needs at least one meal.", false); render(); break; }
       }
-      act((s) => { s.mealPresets.find((x) => x.id === d.id)[d.f] = val; }, "Preset updated");
+      act((s) => { const pr = s.mealPresets.find((x) => x.id === d.id); pr[d.f] = val; if (d.f === "slot") delete pr.slots; }, "Meal updated");
       break;
     }
     case "booster": act((s) => { const b = s.boosters.find((x) => x.id === d.id); b[d.f] = d.f === "protein" ? Math.max(0, Number(t.value) || 0) : t.value; }, "Booster updated"); break;

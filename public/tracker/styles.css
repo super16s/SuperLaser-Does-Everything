@@ -294,3 +294,20 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .rbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 6px; }
 .rtime { text-align: center; font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .exblock .reststrip { margin-top: 8px; }
+
+/* meal picker dropdown */
+.mealpick { display: block; }
+.slotname { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.mealpick select { width: 100%; min-height: 50px; font-size: 1.05rem; font-weight: 700; padding: 8px 12px; border-radius: 14px; text-overflow: ellipsis; }
+
+/* ---- workout-complete finale: pixel flames + victorious muscle man ---- */
+.finale { position: fixed; inset: 0; z-index: 70; background: rgba(12, 2, 0, .55); cursor: pointer; overflow: hidden; animation: finfade 4.4s ease forwards; }
+.finale canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.fin-man { position: absolute; left: 50%; top: 24%; transform: translate(-50%, 0); animation: manrise .9s .45s cubic-bezier(.2, 1.4, .4, 1) both, fistbob .7s 1.4s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(255, 150, 0, .9)); }
+.fin-man svg { display: block; image-rendering: pixelated; }
+.fin-text { position: absolute; left: 0; right: 0; top: 62%; text-align: center; font: 900 clamp(1.7rem, 8.4vw, 2.8rem)/1.1 -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: .06em; color: #fff; text-shadow: 0 0 10px #ffb000, 0 0 26px #ff4d00, 3px 3px 0 #a30000; animation: fintext .5s 1.3s ease-out both; }
+@keyframes finfade { 0% { opacity: 0; } 10% { opacity: 1; } 84% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes manrise { from { transform: translate(-50%, 70vh) scale(.5); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+@keyframes fistbob { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
+@keyframes fintext { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .finale { display: none; } }

@@ -27,15 +27,16 @@ function pusher(frame) {
     [14, 7, 7, 3, "skin"], [14, 6, 3, 1, "skin"], [14, 9, 6, 1, "shade"], [20, 7, 2, 3, "shade"], // pushing arm + bicep + fist
   ];
 }
-// Front view, both arms up.
-const flex = [
-  ...head(8, 0), [9, 6, 4, 1, "shade"],
-  [3, 7, 16, 3, "skin"], [5, 10, 12, 2, "skin"], [7, 12, 8, 1, "shade"], [10, 8, 2, 3, "shade"],
-  [8, 13, 6, 3, "blue"], [8, 15, 6, 1, "blueD"],
-  [8, 16, 2, 4, "skin"], [12, 16, 2, 4, "skin"], [7, 19, 3, 1, "shoe"], [12, 19, 3, 1, "shoe"],
-  [0, 4, 4, 3, "skin"], [0, 1, 3, 4, "skin"], [0, 0, 3, 1, "shade"],      // left arm up
-  [18, 4, 4, 3, "skin"], [19, 1, 3, 4, "skin"], [19, 0, 3, 1, "shade"],   // right arm up
+// Front view, victorious: right arm straight up with a fist, left fist on the hip. 22×24 grid (extra headroom for the raised arm).
+const victory = [
+  ...head(8, 4), [9, 10, 4, 1, "shade"],
+  [3, 11, 16, 3, "skin"], [5, 14, 12, 2, "skin"], [7, 16, 8, 1, "shade"], [10, 12, 2, 3, "shade"],
+  [8, 17, 6, 3, "blue"], [8, 19, 6, 1, "blueD"],
+  [8, 20, 2, 4, "skin"], [12, 20, 2, 4, "skin"], [7, 23, 3, 1, "shoe"], [12, 23, 3, 1, "shoe"],
+  [1, 12, 3, 3, "skin"], [1, 15, 3, 3, "skin"], [3, 17, 2, 1, "shade"],      // left arm, fist on hip
+  [18, 2, 3, 10, "skin"], [18, 0, 3, 3, "shade"], [17, 7, 1, 4, "shade"],     // right arm straight up, fist, bicep shade
 ];
+export function victorySvg(scale = 7) { return svg(victory, 22, 24, scale, "victory"); }
 const stone = [
   [2, 0, 7, 1, "stoneL"], [1, 1, 9, 1, "stone"], [0, 2, 11, 4, "stone"], [1, 6, 9, 1, "stoneD"], [2, 7, 7, 1, "stoneD"],
   [2, 2, 3, 1, "stoneL"], [7, 4, 3, 2, "stoneD"],
@@ -49,7 +50,7 @@ export function scene(pct, key) {
   const complete = pct >= 100;
   return `<div class="scene${complete ? " complete" : ""}" role="progressbar" aria-label="Workout progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
     <div class="pusher" data-key="${key}" data-pct="${pct}" data-prop="push" style="left:${left}">
-      <div class="man">${svg(pusher(0), 22, 20, S, "fa")}${svg(pusher(1), 22, 20, S, "fb")}${svg(flex, 22, 20, S, "flex")}</div>
+      <div class="man">${svg(pusher(0), 22, 20, S, "fa")}${svg(pusher(1), 22, 20, S, "fb")}${svg(victory, 22, 24, S, "flex")}</div>
       <div class="rock">${svg(stone, 11, 8, S, "")}</div>
     </div>
     <div class="cairn" aria-hidden="true">${widths.map((w) => svg(cairnStone(w), w, 5, S)).join("")}</div>

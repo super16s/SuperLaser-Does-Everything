@@ -51,17 +51,18 @@ export const tabs = (ui) => TABS.map(([id, ic, label]) => `<button type="button"
 
 function mealCard(S, ui, slot) {
   const date = ui.date, p = L.currentPreset(S, date, slot.id), log = L.getDay(S, date).meals?.[slot.id];
-  const alts = S.mealPresets.filter((x) => x.slot === slot.id);
+  const alts = S.mealPresets.filter((x) => L.inSlot(x, slot.id));
   const cur = log ? log.multiplier : undefined;
   const chips = L.PORTIONS.map((o) => btn(o.label, { a: "meal", slot: slot.id, v: o.value }, { on: cur === o.value })).join("");
   const logged = log ? (log.multiplier > 0 ? `Logged: ${nf(log.calories * log.multiplier)} kcal · ${nf(log.protein * log.multiplier)} g protein` : "Logged: skipped (0 kcal)") : "Not logged";
+  const opts = alts.map((a) => `<option value="${esc(a.id)}"${a.id === p.id ? " selected" : ""}>${esc(a.label)} · ${nf(a.calories)}</option>`).join("");
   return `<section class="card" id="meal-${slot.id}" data-cele="${MEAL_KIND[slot.id]}" data-done="${log && log.multiplier > 0 ? 1 : 0}" aria-label="${esc(slot.label)}">
-    <div class="mealhead"><strong>${esc(p.label)}</strong><span class="muted">${nf(p.calories)} kcal · ${nf(p.protein)} g protein</span></div>
+    <label class="mealpick"><span class="slotname">${esc(slot.label)}</span><select data-c="swap" data-slot="${slot.id}" aria-label="${esc(slot.label)}: choose a meal">${opts}</select></label>
+    <div class="muted small" style="margin:6px 0">${nf(p.calories)} kcal · ${nf(p.protein)} g protein per full portion</div>
     <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
-    ${alts.length > 1 ? `<label class="field">Swap meal <select data-c="swap" data-slot="${slot.id}">${alts.map((a) => `<option value="${esc(a.id)}"${a.id === p.id ? " selected" : ""}>${esc(a.label)} (${nf(a.calories)} kcal)</option>`).join("")}</select></label>` : ""}
     <div class="muted small" style="margin-top:4px">${esc(p.ingredients)}</div>
-    ${p.amounts ? `<details><summary class="small muted">Amounts</summary><p class="small">${esc(p.amounts)}</p></details>` : ""}</section>`;
+    ${p.amounts ? `<details><summary class="small muted">About this estimate</summary><p class="small">${esc(p.amounts)}</p></details>` : ""}</section>`;
 }
 
 function checklist(S, ui) {
@@ -372,14 +373,14 @@ export function progressView(S, ui) {
 const stepper = (label, field, val, step, unit = "") => `<div class="row between" style="margin:6px 0"><span>${label}: <strong>${val}${unit}</strong></span><span class="row">${btn("−", { a: "pstep", f: field, v: -step }, { aria: `Decrease ${label}` })}${btn("+", { a: "pstep", f: field, v: step }, { aria: `Increase ${label}` })}</span></div>`;
 
 export function settings(S, ui) {
-  const presets = S.mealPresets.map((p) => `<details class="card" style="margin:8px 0"><summary><strong>${esc(p.label)}</strong>&nbsp;<span class="muted">${esc(L.SLOTS.find((s) => s.id === p.slot)?.label)} · ${nf(p.calories)} kcal · ${nf(p.protein)} g</span></summary>
+  const presets = S.mealPresets.map((p) => `<details class="card" style="margin:8px 0"><summary><strong>${esc(p.label)}</strong>&nbsp;<span class="muted">${esc(L.presetSlots(p).map((id) => L.SLOTS.find((x) => x.id === id)?.label).filter(Boolean).join(" / "))} · ${nf(p.calories)} kcal · ${nf(p.protein)} g</span></summary>
     <label class="field">Name<input type="text" data-c="preset" data-id="${esc(p.id)}" data-f="label" value="${esc(p.label)}"></label>
     <label class="field">Meal slot<select data-c="preset" data-id="${esc(p.id)}" data-f="slot">${L.SLOTS.map((s) => `<option value="${s.id}"${s.id === p.slot ? " selected" : ""}>${s.label}</option>`).join("")}</select></label>
     <label class="field">Calories<input type="number" inputmode="numeric" data-c="preset" data-id="${esc(p.id)}" data-f="calories" value="${p.calories}"></label>
     <label class="field">Protein (g)<input type="number" inputmode="numeric" data-c="preset" data-id="${esc(p.id)}" data-f="protein" value="${p.protein}"></label>
     <label class="field">What's in it (plain words)<input type="text" data-c="preset" data-id="${esc(p.id)}" data-f="ingredients" value="${esc(p.ingredients)}"></label>
     <label class="field">Amounts (optional)<input type="text" data-c="preset" data-id="${esc(p.id)}" data-f="amounts" value="${esc(p.amounts || "")}"></label>
-    ${btn("Delete preset", { a: "rmpreset", id: p.id }, { cls: "danger", disabled: S.mealPresets.filter((x) => x.slot === p.slot).length < 2 })}</details>`).join("");
+    ${btn("Delete preset", { a: "rmpreset", id: p.id }, { cls: "danger", disabled: L.presetSlots(p).some((sl) => S.mealPresets.filter((x) => L.inSlot(x, sl)).length < 2) })}</details>`).join("");
   const boosters = S.boosters.map((b) => `<div style="margin:8px 0"><strong>+${b.calories} kcal booster</strong> ${b.foods.trim() ? "" : "· <span class=\"s-partial\">unassigned (adds nothing)</span>"}
     <div class="chips" role="group" aria-label="Suggested foods for +${b.calories}">${(L.BOOSTER_SUGGESTIONS[b.id] || []).map((s) => btn(esc(s.foods), { a: "bsuggest", id: b.id, foods: s.foods, p: s.protein }, { on: b.foods === s.foods })).join("")}</div>
     <label class="field">Foods (type your own)<input type="text" data-c="booster" data-id="${esc(b.id)}" data-f="foods" value="${esc(b.foods)}"></label>
@@ -395,7 +396,7 @@ export function settings(S, ui) {
     ${stepper("Starting weight", "startingWeight", S.profile.startingWeight, 0.5, " lb")}${stepper("Goal weight", "goalWeight", S.profile.goalWeight, 0.5, " lb")}
     <label class="field">Program start date<input type="date" data-c="start" value="${S.profile.startDate}"></label>
     <p class="muted small">Timezone: ${esc(S.profile.timezone)}. Start/goal weights are scale-weight targets, not lean mass. Calorie targets are estimates.</p></section>
-  <section class="card"><h2>Meal presets</h2><p class="muted small">Estimates — edit to match your brands and portions. Changing a preset doesn't rewrite meals you've already logged.</p>${presets}
+  <section class="card"><h2>Meal library</h2><p class="muted small">Meals shown in each slot's dropdown. Estimates: edit to match your brands and portions. Changing one doesn't rewrite meals you've already logged.</p><details><summary><strong>All meals (${S.mealPresets.length})</strong></summary>${presets}</details>
     <h3>Quick add from ideas</h3><p class="muted small">Pick the meal slot, then tap an idea to add it with a rough calorie and protein estimate. Swap it in from the meal card.</p>
     <div class="chips" role="group" aria-label="Meal ideas">${L.MEAL_IDEAS.map((m, i) => btn(`${esc(m.name)} · ${m.calories} kcal`, { a: "addidea", i })).join("")}</div>
     <div class="row" style="margin-top:8px"><label class="small muted" for="newslot">New preset for</label><select id="newslot">${L.SLOTS.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select>${btn("Add preset", { a: "addpreset" })}</div></section>

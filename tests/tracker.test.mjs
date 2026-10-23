@@ -14,16 +14,16 @@ test("calendar assumptions used by the tests", () => {
   assert.equal(L.weekStartOf(SUN), MON);
 });
 
-test("all six meals Full → 3,125 kcal / 174 g (v5 presets)", () => {
+test("all six meals Full → 2,555 kcal / 164 g (v6 library defaults)", () => {
   const st = fresh();
   for (const slot of L.SLOTS) run(st, (s) => A.setMeal(s, MON, slot.id, 1));
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 3125, protein: 174 });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 2555, protein: 164 });
 });
 
-test("half lunch → 400 kcal / 25 g; untapping removes it", () => {
+test("half lunch → 275 kcal / 24 g; untapping removes it", () => {
   const st = fresh();
   run(st, (s) => A.setMeal(s, MON, "lunch", 0.5));
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 400, protein: 25 });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 275, protein: 24 });
   run(st, (s) => A.setMeal(s, MON, "lunch", 0.5));
   assert.deepEqual(L.mealTotals(st.state, MON), { calories: 0, protein: 0 });
   assert.equal(L.getDay(st.state, MON).meals, undefined);
@@ -39,8 +39,8 @@ test("None logs zero (not preset default) and is distinct from not-logged", () =
 test("editing a preset later does not rewrite already-logged meals", () => {
   const st = fresh();
   run(st, (s) => A.setMeal(s, MON, "lunch", 1));
-  run(st, (s) => { s.mealPresets.find((p) => p.id === "lunch-default").calories = 100; });
-  assert.equal(L.mealTotals(st.state, MON).calories, 800);
+  run(st, (s) => { s.mealPresets.find((p) => p.id === "ln-chickrice").calories = 100; });
+  assert.equal(L.mealTotals(st.state, MON).calories, 550);
 });
 
 test("swap uses the chosen preset's macros", () => {
@@ -159,7 +159,7 @@ test("undo, export/import round-trip, templates untouched, per-day isolation", (
   run(st, (s) => A.setMeal(s, MON, "lunch", 1));
   const other = createStore(mem());
   other.importJson(st.exportJson());
-  assert.equal(L.mealTotals(other.state, MON).calories, 800);
+  assert.equal(L.mealTotals(other.state, MON).calories, 550);
   assert.equal(JSON.stringify(L.CHECKLIST), templateBefore);
   assert.throws(() => other.importJson('{"nope":1}'));
 });
@@ -167,7 +167,7 @@ test("undo, export/import round-trip, templates untouched, per-day isolation", (
 test("persists across store instances", () => {
   const storage = mem();
   createStore(storage).mutate((s) => A.setMeal(s, MON, "lunch", 2));
-  assert.equal(L.mealTotals(createStore(storage).state, MON).calories, 1600);
+  assert.equal(L.mealTotals(createStore(storage).state, MON).calories, 1100);
 });
 
 test("a throwing mutation leaves state untouched", () => {
@@ -211,31 +211,6 @@ test("load levels for non-ladder exercises go up and down within bounds", () => 
   assert.equal(L.progressLevel(st.state, "g-squat"), 0);
 });
 
-test("nutrition migration updates untouched older presets only, and keeps user edits", () => {
-  const base = structuredClone(createStore(mem()).state);
-  delete base.nutritionVersion;
-  const setPreset = (state, id, patch) => Object.assign(state.mealPresets.find((p) => p.id === id), patch);
-  const load = (state) => { const st = createStore(mem()); st.importJson(JSON.stringify(state)); return st; };
-  const get = (st, id) => st.state.mealPresets.find((p) => p.id === id);
-
-  const v1 = structuredClone(base);
-  setPreset(v1, "breakfast-default", L.LEGACY_PRESETS["breakfast-default"][0]);
-  setPreset(v1, "shake-default", { ...L.LEGACY_PRESETS["shake-default"][0], calories: 999 }); // user edited the shake
-  const a = load(v1);
-  assert.equal(get(a, "breakfast-default").calories, 765);
-  assert.match(get(a, "breakfast-default").ingredients, /soy milk/);
-  assert.equal(get(a, "shake-default").calories, 999);
-  assert.equal(a.state.nutritionVersion, 5);
-
-  const v2 = structuredClone(base); // full-scoop version that shipped briefly
-  setPreset(v2, "shake-default", L.LEGACY_PRESETS["shake-default"][1]);
-  const b = load(v2);
-  assert.deepEqual([get(b, "shake-default").calories, get(b, "shake-default").protein], [530, 29]);
-  assert.equal(get(b, "shake-default").ingredients, "Soy milk, plant protein, banana, peanut butter, oats");
-
-  const again = createStore(mem()); again.importJson(a.exportJson());
-  assert.equal(get(again, "shake-default").calories, 999); // idempotent
-});
 
 test("supplement checklist items are manual and per-day", () => {
   const st = fresh();
@@ -414,22 +389,6 @@ test("workout export: text and CSV reflect sets, loads and status; empty day rep
   assert.equal(L.workoutExport(st.state, SUN).text.includes("No loaded workout scheduled."), true);
 });
 
-test("plain-language ingredients: defaults have no measurements; every old default migrates; edits survive", () => {
-  const measured = /\b\d+(\.\d+)?\s*(oz|cups?|tbsp|tsp|g|lb)\b|\d\/\d/i;
-  for (const p of L.DEFAULT_PRESETS) { assert.ok(!measured.test(p.ingredients), p.ingredients); assert.ok(p.amounts.length > 0); }
-  const base = structuredClone(createStore(mem()).state); delete base.nutritionVersion;
-  for (const [id, olds] of Object.entries(L.LEGACY_PRESETS)) for (const old of olds) {
-    const state = structuredClone(base);
-    Object.assign(state.mealPresets.find((p) => p.id === id), old);
-    const st = createStore(mem()); st.importJson(JSON.stringify(state));
-    const got = st.state.mealPresets.find((p) => p.id === id), want = L.DEFAULT_PRESETS.find((p) => p.id === id);
-    assert.deepEqual([got.ingredients, got.calories, got.protein, got.amounts], [want.ingredients, want.calories, want.protein, want.amounts]);
-  }
-  const edited = structuredClone(base);
-  Object.assign(edited.mealPresets.find((p) => p.id === "lunch-default"), L.LEGACY_PRESETS["lunch-default"][0], { ingredients: "my own lunch" });
-  const st = createStore(mem()); st.importJson(JSON.stringify(edited));
-  assert.equal(st.state.mealPresets.find((p) => p.id === "lunch-default").ingredients, "my own lunch");
-});
 
 test("meal ideas are complete and plain", () => {
   assert.ok(L.MEAL_IDEAS.length >= 8);
@@ -506,22 +465,6 @@ test("every screen renders without throwing, on every kind of day, in both worko
   assert.match(V.workout(st.state, { ...base, date: TUE }), /class="card"><h2>Walk/);
 });
 
-test("v5 migration: adds the morning snack preset + reminder; raises an untouched 2,850 target only", () => {
-  const base = JSON.parse(createStore(mem()).exportJson());
-  const asV4 = (patch = {}) => {
-    const o = structuredClone(base); o.nutritionVersion = 4;
-    o.mealPresets = o.mealPresets.filter((p) => p.slot !== "snack1");
-    o.reminders = o.reminders.filter((r) => r.id !== "meal-snack1");
-    o.profile.calorieTarget = 2850; Object.assign(o.profile, patch);
-    const st = createStore(mem()); st.importJson(JSON.stringify(o)); return st.state;
-  };
-  const a = asV4();
-  assert.ok(a.mealPresets.some((p) => p.slot === "snack1" && p.calories === 300));
-  assert.ok(a.reminders.some((r) => r.id === "meal-snack1" && r.time === "10:00"));
-  assert.equal(a.profile.calorieTarget, 3100);
-  assert.equal(asV4({ calorieTarget: 2950 }).profile.calorieTarget, 2950); // user's own number is kept
-  assert.equal(L.SLOTS.map((x) => x.id).join(), "breakfast,snack1,lunch,shake,dinner,snack");
-});
 
 test("prayer: tap logs, same tap clears, feeds the checklist; sleep and weight feed it too", () => {
   const st = fresh();
@@ -579,7 +522,7 @@ test("extras work alongside presets and boosters in the day total, and render", 
   const V = await import("../public/tracker/views.js");
   const st = fresh();
   run(st, (s) => { A.setMeal(s, MON, "lunch", 1); A.addExtra(s, MON, { foodId: "pb", name: "Peanut butter", serving: "1 tbsp", calories: 95, protein: 4 }); });
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 895, protein: 54 });
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 645, protein: 52 });
   const html = V.today(st.state, { tab: "today", date: MON, painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, customKcal: 200, customProtein: 10 });
   assert.match(html, /Anything else you ate/);
   assert.match(html, /Peanut butter/);
@@ -611,4 +554,82 @@ test("workout screen: progress scene sits above the tiles; rest timer lives insi
   // walk day: scene still comes first, then the walk card
   const sat = V.workout(st.state, { ...base, date: L.addDays(MON, 5) });
   assert.ok(at(sat, /class="hero/) < at(sat, /<h2>Walk/));
+});
+
+test("meal library: right options per slot, snacks shared by three slots, defaults per slot", () => {
+  const st = fresh();
+  const names = (slot) => st.state.mealPresets.filter((p) => L.inSlot(p, slot)).map((p) => p.label);
+  assert.deepEqual(names("breakfast"), ["Bacon, egg and cheese sandwich", "Oatmeal, banana and yogurt", "Eggs and beef", "Breakfast tacos (2)"]);
+  assert.deepEqual(names("lunch"), ["Chicken and rice", "Chicken and pasta", "Pasta with meat sauce", "Chicken soup", "Turkey sandwich", "Grilled chicken salad"]);
+  assert.deepEqual(names("dinner"), ["Chicken quesadilla", "Pasta with meat sauce", "Salmon, rice and vegetables", "Chicken and rice", "Chinese takeout (entree and rice)", "Sushi rolls (2 rolls)", "Pizza (2 slices)"]);
+  const snacks = ["Greek yogurt", "Banana and peanut butter", "Almonds", "Cheese and crackers", "Yogurt with no-grain granola", "Fruit", "Vegetables"];
+  for (const slot of ["snack1", "snack"]) assert.deepEqual(names(slot), snacks);
+  assert.deepEqual(names("shake"), [...snacks, "Plant-protein shake"]);
+  const dflt = (slot) => L.currentPreset(st.state, MON, slot).label;
+  assert.deepEqual(["breakfast", "snack1", "lunch", "shake", "dinner", "snack"].map(dflt), ["Bacon, egg and cheese sandwich", "Banana and peanut butter", "Chicken and rice", "Plant-protein shake", "Chicken quesadilla", "Greek yogurt"]);
+});
+
+test("meal library data: plain ingredients, calories and protein present, unique ids", () => {
+  const measured = /\b\d+(\.\d+)?\s*(oz|cups?|tbsp|tsp|g|lb)\b|\d\/\d/i;
+  const ids = new Set();
+  for (const p of L.DEFAULT_PRESETS) {
+    assert.ok(p.label && p.calories > 0 && p.protein >= 0 && p.ingredients && p.amounts, p.id);
+    assert.ok(!measured.test(p.ingredients), `${p.id}: ${p.ingredients}`);
+    assert.ok(!ids.has(p.id), `duplicate ${p.id}`); ids.add(p.id);
+  }
+});
+
+test("picking a meal from the dropdown changes today, is remembered for new days, and recalculates a logged meal", () => {
+  const st = fresh();
+  run(st, (s) => A.setMeal(s, MON, "lunch", 1));
+  assert.equal(L.mealTotals(st.state, MON).calories, 550);
+  run(st, (s) => A.swapMeal(s, MON, "lunch", "ln-soup"));
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 250, protein: 18 }); // logged meal follows the pick
+  assert.equal(L.currentPreset(st.state, TUE, "lunch").id, "ln-soup");           // remembered tomorrow
+  assert.equal(L.currentPreset(st.state, TUE, "dinner").id, "dn-quesadilla");    // other slots untouched
+  run(st, (s) => A.setMeal(s, TUE, "lunch", 2));
+  assert.equal(L.mealTotals(st.state, TUE).calories, 500);
+  run(st, (s) => A.swapMeal(s, TUE, "snack1", "sn-almonds")); // shared snack list works in every snack slot
+  assert.equal(L.currentPreset(st.state, WED, "snack1").id, "sn-almonds");
+  assert.equal(L.currentPreset(st.state, WED, "snack").id, "sn-yogurt");
+});
+
+test("saved states: unedited old defaults give way to the library; edited ones stay; slots never empty", () => {
+  const base = JSON.parse(createStore(mem()).exportJson());
+  const slotOf = { "breakfast-default": "breakfast", "lunch-default": "lunch", "dinner-default": "dinner", "snack1-default": "snack1", "snack-default": "snack" };
+  const oldState = (edit) => {
+    const o = structuredClone(base); o.nutritionVersion = 5; delete o.lastChoice;
+    const shake = o.mealPresets.find((p) => p.id === "shake-default");
+    o.mealPresets = [...Object.entries(slotOf).map(([id, slot]) => { const l = L.LEGACY_PRESETS[id]; return { id, slot, ...l[l.length - 1], amounts: "", isDefault: true }; }), shake];
+    if (edit) edit(o);
+    const st = createStore(mem()); st.importJson(JSON.stringify(o)); return st.state;
+  };
+  const a = oldState();
+  assert.ok(Object.keys(slotOf).every((id) => !a.mealPresets.some((p) => p.id === id)), "old defaults replaced");
+  assert.equal(a.mealPresets.filter((p) => L.inSlot(p, "lunch")).length, 6);
+  assert.equal(a.nutritionVersion, 6);
+  const b = oldState((o) => { o.mealPresets.find((p) => p.id === "lunch-default").calories = 999; });
+  assert.ok(b.mealPresets.some((p) => p.id === "lunch-default" && p.calories === 999), "edited meal kept");
+  assert.equal(b.mealPresets.filter((p) => L.inSlot(p, "lunch")).length, 7);
+  for (const st of [a, b]) for (const slot of L.SLOTS) assert.ok(st.mealPresets.some((p) => L.inSlot(p, slot.id)), slot.id);
+  // v1 states (whole milk, measured ingredients) migrate the same way
+  const v1 = oldState((o) => { o.nutritionVersion = 1; Object.assign(o.mealPresets.find((p) => p.id === "breakfast-default"), L.LEGACY_PRESETS["breakfast-default"][0]); });
+  assert.ok(!v1.mealPresets.some((p) => p.id === "breakfast-default"));
+  // the shake keeps working, and is the afternoon default
+  assert.equal(L.currentPreset({ ...a, days: {} }, MON, "shake").label, "Plant-protein shake");
+});
+
+test("v5 migration still adds the morning snack reminder and raises an untouched 2,850 target only", () => {
+  const base = JSON.parse(createStore(mem()).exportJson());
+  const asOld = (patch = {}) => {
+    const o = structuredClone(base); o.nutritionVersion = 4;
+    o.reminders = o.reminders.filter((r) => r.id !== "meal-snack1");
+    o.profile.calorieTarget = 2850; Object.assign(o.profile, patch);
+    const st = createStore(mem()); st.importJson(JSON.stringify(o)); return st.state;
+  };
+  const a = asOld();
+  assert.ok(a.mealPresets.some((p) => L.inSlot(p, "snack1")));
+  assert.ok(a.reminders.some((r) => r.id === "meal-snack1" && r.time === "10:00"));
+  assert.equal(a.profile.calorieTarget, 3100);
+  assert.equal(asOld({ calorieTarget: 2950 }).profile.calorieTarget, 2950);
 });

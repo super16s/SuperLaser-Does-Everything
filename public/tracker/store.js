@@ -5,7 +5,7 @@
 import {
   DEFAULT_PRESETS, DEFAULT_BOOSTERS, defaultReminders, REMINDER_CATEGORIES, YOGA_STAGES,
   ymd, localTz, stamp, getDay, currentPreset, setKey, PAIN,
-  SLOTS, LEGACY_PRESETS, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
+  SLOTS, LEGACY_PRESETS, RETIRED_DEFAULTS, inSlot, LADDERS, MAX_LOAD_LEVEL, canProgress, shownLadderVariant, progressLevel as L_progressLevel,
 } from "./logic.js";
 
 const KEY = "superlaser-tracker-v1";
@@ -14,7 +14,8 @@ const MAX_UNDO = 25;
 export function defaultState(now = new Date()) {
   return {
     version: 1,
-    nutritionVersion: 5,
+    nutritionVersion: 6,
+    lastChoice: {}, // slot → last meal you picked, shown by default on new days
     profile: { startingWeight: 159, goalWeight: 174, calorieTarget: 3100, proteinTarget: 150, startDate: ymd(now), timezone: localTz() },
     mealPresets: structuredClone(DEFAULT_PRESETS),
     boosters: structuredClone(DEFAULT_BOOSTERS),
@@ -31,15 +32,13 @@ export function defaultState(now = new Date()) {
 
 function normalize(s) {
   const d = defaultState();
-  const migrateNutrition = s.nutritionVersion !== 5;
-  const out = { ...d, ...s, nutritionVersion: 5 };
+  const migrateNutrition = s.nutritionVersion !== 6;
+  const out = { ...d, ...s, nutritionVersion: 6 };
   for (const k of ["profile", "reminderCategories", "reminderState"]) out[k] = { ...d[k], ...(s[k] || {}) };
   delete out.clearance; // legacy: clinician-clearance gates were removed
   for (const k of ["fired", "skipped", "snoozedUntil"]) out.reminderState[k] ||= {};
-  for (const k of ["days", "weeklyReviews", "lists", "progression"]) out[k] ||= {};
+  for (const k of ["days", "weeklyReviews", "lists", "progression", "lastChoice"]) out[k] ||= {};
   for (const k of ["mealPresets", "boosters", "reminders", "pain"]) if (!Array.isArray(out[k])) out[k] = d[k];
-  // Every meal slot must have at least one preset (e.g. the morning snack added in v5).
-  for (const slot of SLOTS) if (!out.mealPresets.some((p) => p.slot === slot.id)) out.mealPresets.push(structuredClone(d.mealPresets.find((p) => p.slot === slot.id)));
   if (!out.reminders.some((r) => r.id === "meal-snack1")) {
     const r = d.reminders.find((x) => x.id === "meal-snack1");
     if (r) out.reminders.push(structuredClone(r));
@@ -47,14 +46,19 @@ function normalize(s) {
   if (migrateNutrition) {
     // v5 adds a morning snack, so a full day is ~3,125 kcal: lift the default target only if it was never changed.
     if (s.profile?.calorieTarget === 2850) out.profile.calorieTarget = 3100;
-    // Swap in the current breakfast / shake only where the user never edited an earlier default.
+    // Refresh presets that still match an earlier default and still exist today (e.g. the shake).
     for (const nd of d.mealPresets) {
       const legacy = LEGACY_PRESETS[nd.id], i = out.mealPresets.findIndex((p) => p.id === nd.id);
       if (!legacy || i < 0) continue;
       const cur = out.mealPresets[i];
       if (legacy.some((old) => Object.keys(old).every((k) => cur[k] === old[k]))) out.mealPresets[i] = { ...cur, ...nd };
     }
+    // v6 meal library: unedited old defaults make way for it; anything you edited stays as your own meal.
+    out.mealPresets = out.mealPresets.filter((cur) => !(RETIRED_DEFAULTS.includes(cur.id) && (LEGACY_PRESETS[cur.id] || []).some((old) => Object.keys(old).every((k) => cur[k] === old[k]))));
+    for (const nd of d.mealPresets) if (!out.mealPresets.some((p) => p.id === nd.id)) out.mealPresets.push(structuredClone(nd));
   }
+  // Every meal slot must have at least one meal to choose.
+  for (const slot of SLOTS) if (!out.mealPresets.some((p) => inSlot(p, slot.id))) out.mealPresets.push(structuredClone(d.mealPresets.find((p) => inSlot(p, slot.id))));
   return out;
 }
 
@@ -138,6 +142,7 @@ export const actions = {
     const d = day(s, date);
     d.swaps ||= {};
     d.swaps[slot] = presetId;
+    (s.lastChoice ||= {})[slot] = presetId; // new days start on your last pick
     const m = d.meals?.[slot], p = s.mealPresets.find((x) => x.id === presetId);
     if (m && p) Object.assign(m, { presetId, calories: p.calories, protein: p.protein });
   },

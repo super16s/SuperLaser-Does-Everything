@@ -17,25 +17,43 @@ export const PRAYERS = [
   { id: "evening", label: "Retiring at Night" },
 ];
 
+// Meal library: one portion each, calories/protein from published nutrition databases (USDA-derived
+// listings, brand and recipe sites). Sources disagree a lot, so each entry uses the middle of the range
+// found and says what it assumes. Use the 1.5× / 2× chips (or Settings) to match your plate.
+const SNACKS = ["snack1", "shake", "snack"];
+const meal = (id, slot, label, calories, protein, ingredients, amounts, extra = {}) => ({ id, slot, label, calories, protein, ingredients, amounts, isDefault: false, ...extra });
 export const DEFAULT_PRESETS = [
-  { id: "breakfast-default", slot: "breakfast", label: "Breakfast", calories: 765, protein: 35,
-    ingredients: "Oats, soy milk, banana, peanut butter, eggs",
-    amounts: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
-  { id: "snack1-default", slot: "snack1", label: "Morning snack", calories: 300, protein: 8,
-    ingredients: "Banana and peanut butter",
-    amounts: "1 banana, 2 tbsp peanut butter" },
-  { id: "lunch-default", slot: "lunch", label: "Lunch", calories: 800, protein: 50,
-    ingredients: "Chicken and rice, beans, vegetables",
-    amounts: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
-  { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 530, protein: 29,
+  // Breakfast
+  meal("bf-bec", "breakfast", "Bacon, egg and cheese sandwich", 500, 25, "Bacon, egg, cheese, bread", "Sources: 450–550 kcal, 20–30 g protein. Varies with the bread, cheese and bacon.", { defaultFor: ["breakfast"] }),
+  meal("bf-oats", "breakfast", "Oatmeal, banana and yogurt", 385, 24, "Oatmeal, banana, Greek yogurt", "1 cup cooked oatmeal (about 150 kcal), 1 medium banana (105), 3/4 cup Greek yogurt (130)."),
+  meal("bf-eggsbeef", "breakfast", "Eggs and beef", 510, 44, "Eggs, ground beef", "3 eggs (about 225 kcal) and 4 oz cooked 85% lean ground beef (about 285). Cooked-weight figures run 270–300 kcal."),
+  meal("bf-taco", "breakfast", "Breakfast tacos (2)", 720, 38, "Tortilla, meat, eggs, cheese", "Sources: 320–400 kcal and 15–21 g protein per taco. Two tacos."),
+  // Lunch
+  meal("ln-chickrice", "lunch", "Chicken and rice", 550, 48, "Chicken, rice, vegetables", "5 oz cooked chicken breast (about 210 kcal, 42 g protein) and 1.5 cups cooked rice (about 330 kcal, 6 g).", { defaultFor: ["lunch"] }),
+  meal("ln-chickpasta", "lunch", "Chicken and pasta", 630, 54, "Chicken, pasta, sauce", "5 oz cooked chicken breast, 1.5 cups cooked pasta (about 225 kcal per cup) and a little sauce or oil."),
+  meal("ln-meatpasta", "lunch", "Pasta with meat sauce", 650, 34, "Pasta, ground beef, tomato sauce", "Estimated from parts: 1.5 cups cooked pasta, 3 oz ground beef, sauce. Prepared-entrée listings are much smaller (about 255 kcal)."),
+  meal("ln-soup", "lunch", "Chicken soup", 250, 18, "Chicken, noodles, broth, vegetables", "One restaurant or canned bowl: 200–275 kcal, 14–23 g protein. Pair it with bread or double the portion."),
+  meal("ln-turkeysand", "lunch", "Turkey sandwich", 360, 29, "Turkey, bread, cheese, lettuce, tomato", "Sources: 308–389 kcal, 28–40 g protein; the USDA-based example is 360 kcal and 29 g."),
+  meal("ln-salad", "lunch", "Grilled chicken salad", 380, 35, "Grilled chicken, greens, dressing", "Sources: 220–300 kcal with light dressing, up to 580 with nuts, avocado or oil dressing. Protein 22–43 g."),
+  // Snacks (the same list serves the morning, afternoon and evening snack)
+  meal("sn-yogurt", "snack", "Greek yogurt", 130, 17, "Plain Greek yogurt", "3/4 cup. Nonfat is about 100 kcal and whole milk about 170; protein 13–18 g.", { slots: SNACKS, defaultFor: ["snack"] }),
+  meal("sn-bpb", "snack", "Banana and peanut butter", 295, 9, "Banana, peanut butter", "1 medium banana (105 kcal) and 2 tbsp peanut butter (188 kcal, 8 g protein).", { slots: SNACKS, defaultFor: ["snack1"] }),
+  meal("sn-almonds", "snack", "Almonds", 165, 6, "Almonds", "1 oz, about 23 almonds. Roasted is slightly higher (about 172 kcal).", { slots: SNACKS }),
+  meal("sn-crackers", "snack", "Cheese and crackers", 230, 9, "Cheese, crackers", "1 oz cheddar (about 113 kcal) and 6 whole-wheat crackers (about 120). Protein estimated.", { slots: SNACKS }),
+  meal("sn-granola", "snack", "Yogurt with no-grain granola", 280, 21, "Greek yogurt, grain-free granola", "3/4 cup Greek yogurt (130 kcal, 17 g) and 1/4 cup grain-free granola (140–160 kcal, 3–5 g).", { slots: SNACKS }),
+  meal("sn-fruit", "snack", "Fruit", 80, 1, "Apple, berries or a fruit cup", "A medium apple (about 72–80 kcal) or a mixed fruit cup (about 70).", { slots: SNACKS }),
+  meal("sn-veg", "snack", "Vegetables", 50, 2, "Carrots, celery, peppers", "About 1.5 cups raw. Carrots are about 50 kcal a cup, celery 14, pepper 25–30.", { slots: SNACKS }),
+  { id: "shake-default", slot: "shake", label: "Plant-protein shake", calories: 530, protein: 29, defaultFor: ["shake"],
     ingredients: "Soy milk, plant protein, banana, peanut butter, oats",
     amounts: "1 cup soy milk, 1/2 scoop plant protein (pea/rice blend), 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
-  { id: "dinner-default", slot: "dinner", label: "Dinner", calories: 650, protein: 40,
-    ingredients: "Turkey and pasta with tomato sauce, vegetables, olive oil",
-    amounts: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
-  { id: "snack-default", slot: "snack", label: "Greek yogurt snack", calories: 80, protein: 12,
-    ingredients: "Plain Greek yogurt",
-    amounts: "1/2 cup plain Greek yogurt" },
+  // Dinner
+  meal("dn-quesadilla", "dinner", "Chicken quesadilla", 550, 36, "Tortilla, chicken, cheese", "Home versions: 435–490 kcal, 33–45 g protein. Restaurant (Chipotle): 670 kcal, 34 g.", { defaultFor: ["dinner"] }),
+  meal("dn-meatpasta", "dinner", "Pasta with meat sauce", 650, 34, "Pasta, ground beef, tomato sauce", "Estimated from parts: 1.5 cups cooked pasta, 3 oz ground beef, sauce."),
+  meal("dn-salmon", "dinner", "Salmon, rice and vegetables", 560, 36, "Salmon, rice, vegetables", "5 oz cooked salmon (about 290 kcal, 30 g; sources 170–340), 1 cup rice (about 220), vegetables."),
+  meal("dn-chickrice", "dinner", "Chicken and rice", 550, 48, "Chicken, rice, vegetables", "5 oz cooked chicken breast and 1.5 cups cooked rice."),
+  meal("dn-chinese", "dinner", "Chinese takeout (entree and rice)", 800, 30, "Chicken entree, rice", "A restaurant entree such as General Tso's is about 300–400 kcal a piece, roughly 600 for a portion, plus 1 cup of steamed rice. Fried rice adds a lot more."),
+  meal("dn-sushi", "dinner", "Sushi rolls (2 rolls)", 700, 30, "Sushi rice, fish, seaweed", "Two 8-piece rolls. California rolls run 250–420 kcal and 8–18 g protein; spicy tuna about 430 kcal and 23 g."),
+  meal("dn-pizza", "dinner", "Pizza (2 slices)", 500, 22, "Pizza", "Slices run about 190–290 kcal and 8–13 g protein; two average slices."),
 ];
 
 // Common foods for one-off logging on Today ("Anything else you ate"). Rough US
@@ -93,13 +111,17 @@ export const MEAL_IDEAS = [
 
 // Earlier defaults for presets that changed in later nutrition versions (v1: dairy;
 // v2: full-scoop plant protein; v3: measured ingredient lists, now plain language). Used only to migrate presets the user never edited.
+// Presets from before the v6 meal library; unedited copies are replaced by the library.
+export const RETIRED_DEFAULTS = ["breakfast-default", "lunch-default", "dinner-default", "snack1-default", "snack-default"];
 export const LEGACY_PRESETS = {
   "breakfast-default": [
     { label: "Breakfast", calories: 800, protein: 35, ingredients: "1/2 cup dry oats, 1 cup whole milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
     { label: "Breakfast", calories: 765, protein: 35, ingredients: "3/4 cup dry oats, 1 cup soy milk, 1 banana, 2 tbsp peanut butter, 2 eggs" },
+    { label: "Breakfast", calories: 765, protein: 35, ingredients: "Oats, soy milk, banana, peanut butter, eggs" },
   ],
   "lunch-default": [
     { label: "Lunch", calories: 800, protein: 50, ingredients: "5 oz cooked chicken thighs, 1.5 cups cooked rice, 1/2 cup beans, vegetables" },
+    { label: "Lunch", calories: 800, protein: 50, ingredients: "Chicken and rice, beans, vegetables" },
   ],
   "shake-default": [
     { label: "Weight-gain shake", calories: 530, protein: 18, ingredients: "1 cup whole milk, 1 banana, 2 tbsp peanut butter, 1/4 cup dry oats" },
@@ -108,9 +130,14 @@ export const LEGACY_PRESETS = {
   ],
   "dinner-default": [
     { label: "Dinner", calories: 650, protein: 40, ingredients: "4 oz cooked ground turkey, 2 oz dry pasta, tomato sauce, vegetables, some olive oil" },
+    { label: "Dinner", calories: 650, protein: 40, ingredients: "Turkey and pasta with tomato sauce, vegetables, olive oil" },
   ],
   "snack-default": [
     { label: "Greek yogurt snack", calories: 80, protein: 12, ingredients: "1/2 cup plain Greek yogurt" },
+    { label: "Greek yogurt snack", calories: 80, protein: 12, ingredients: "Plain Greek yogurt" },
+  ],
+  "snack1-default": [
+    { label: "Morning snack", calories: 300, protein: 8, ingredients: "Banana and peanut butter" },
   ],
 };
 
@@ -375,9 +402,17 @@ export const stamp = (now = new Date()) => ({ loggedAt: now.toISOString(), tz: l
 const EMPTY_DAY = Object.freeze({});
 export const getDay = (state, date) => state.days[date] || EMPTY_DAY;
 export const presetById = (state, id) => state.mealPresets.find((p) => p.id === id);
+// A preset can serve several slots (the snack list serves all three snack slots).
+export const presetSlots = (p) => [...new Set([p.slot, ...(p.slots || [])])];
+export const inSlot = (p, slot) => p.slot === slot || (p.slots || []).includes(slot);
+// Which meal a slot shows: today's pick, else the last one you chose for that slot, else its default.
 export function currentPreset(state, date, slot) {
-  const swapped = getDay(state, date).swaps?.[slot];
-  return presetById(state, swapped) || state.mealPresets.find((p) => p.slot === slot && p.isDefault !== false) || state.mealPresets.find((p) => p.slot === slot);
+  const pick = presetById(state, getDay(state, date).swaps?.[slot]);
+  if (pick) return pick;
+  const last = presetById(state, state.lastChoice?.[slot]);
+  if (last && inSlot(last, slot)) return last;
+  const here = state.mealPresets.filter((p) => inSlot(p, slot));
+  return here.find((p) => p.defaultFor?.includes(slot)) || here.find((p) => p.isDefault !== false) || here[0];
 }
 
 // ---------- Nutrition ----------
