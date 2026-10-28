@@ -3,7 +3,7 @@
 
 import * as L from "./logic.js";
 import { lineChart, barChart } from "./charts.js";
-import { scene, pixelIcon, MEAL_KIND } from "./sprites.js";
+import { scene, MEAL_KIND } from "./sprites.js";
 import { productToPreset } from "./off.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -117,7 +117,7 @@ function prayerCard(S, ui, p) {
   const st = L.getDay(S, ui.date).prayer?.[p.id]?.status;
   const label = st === "done" ? `${p.label} ✓` : st === "skipped" ? `${p.label} (skipped)` : p.label;
   return `<section class="card prayer" id="prayer-${p.id}" data-cele="prayer" data-done="${st === "done" ? 1 : 0}" aria-label="${esc(p.label)}">
-    <button type="button" class="primary giant" data-a="prayer" data-w="${p.id}" data-long="1" data-fk="prayer-${p.id}" aria-pressed="${st === "done"}" aria-label="${esc(p.label)}: ${STATE_TEXT[st || "none"]}. Tap to log; long-press for Skipped.">${pixelIcon("prayer", 3)}<span>${label}</span></button></section>`;
+    <button type="button" class="primary giant" data-a="prayer" data-w="${p.id}" data-long="1" data-fk="prayer-${p.id}" aria-pressed="${st === "done"}" aria-label="${esc(p.label)}: ${STATE_TEXT[st || "none"]}. Tap to log; long-press for Skipped."><span>${label}</span></button></section>`;
 }
 
 export function today(S, ui) {

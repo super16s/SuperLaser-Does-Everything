@@ -4,7 +4,7 @@ import { createStore, actions as A } from "./store.js";
 import * as L from "./logic.js";
 import * as V from "./views.js";
 import * as OFF from "./off.js";
-import { CELE, pixelIcon, victorySvg } from "./sprites.js";
+import { CELE, victorySvg } from "./sprites.js";
 import { startScheduler, snooze, skipToday, notify, askPermission } from "./reminders.js";
 
 const store = createStore();
@@ -114,8 +114,8 @@ function animateBars() {
   if (ui.popFk) { document.querySelector(`[data-fk="${CSS.escape(ui.popFk)}"]`)?.classList.add("tap-pop"); ui.popFk = null; }
   if (confetti) { launchFinale(); try { navigator.vibrate?.([30, 40, 60, 40, 120]); } catch {} }
 }
-// Each Today action plays its own little pixel celebration when it flips to done:
-// the card's icon pops and particles burst or rise around it.
+// Each Today action plays its own clean light effect when it flips to done:
+// a soft glow and two ripple rings, with round sparks that burst or rise.
 function celebrations() {
   if (reduceMotion()) return;
   document.querySelectorAll("[data-cele]").forEach((el) => {
@@ -129,19 +129,19 @@ function celebrate(el, kind) {
   if (!cfg || !r.width) return;
   const box = document.createElement("div");
   box.className = `cele ${kind} ${cfg.mode}`; box.setAttribute("aria-hidden", "true");
-  box.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
-  box.innerHTML = `<div class="spr">${pixelIcon(kind, 5)}</div>`;
+  box.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;--w:${Math.round(r.width)}`;
+  box.innerHTML = `<b class="ring" style="--c:${cfg.hue}"></b><b class="ring r2" style="--c:${cfg.hue}"></b>`;
   for (let i = 0; i < 18; i++) {
     const p = document.createElement("i"), a = (Math.PI * 2 * i) / 18 + Math.random() * 0.4, d = 50 + Math.random() * 70;
     const dx = cfg.mode === "burst" ? Math.cos(a) * d : (Math.random() - 0.5) * 90, dy = cfg.mode === "burst" ? Math.sin(a) * d * 0.7 : -30 - Math.random() * 70;
-    p.style.cssText = `background:${cfg.colors[i % cfg.colors.length]};left:50%;top:50%;--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-delay:${(Math.random() * 0.25).toFixed(2)}s`;
+    const col = cfg.colors[i % cfg.colors.length]; p.style.cssText = `background:${col};color:${col};left:50%;top:50%;--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-delay:${(Math.random() * 0.25).toFixed(2)}s`;
     box.append(p);
   }
   document.body.append(box);
   setTimeout(() => box.remove(), 1900);
   try { navigator.vibrate?.(20); } catch {}
 }
-// Workout complete: pixel flames climb until they fill the screen while the muscle man raises a victorious fist.
+// Workout complete: smooth flames climb until they fill the screen while the muscle man raises a victorious fist.
 // (The classic "demo-scene" fire: each cell passes heat upward, losing a little at random.)
 function launchFinale() {
   if (reduceMotion() || document.querySelector(".finale")) return;
@@ -149,7 +149,7 @@ function launchFinale() {
   box.className = "finale"; box.setAttribute("aria-hidden", "true");
   box.innerHTML = `<canvas></canvas><div class="fin-man">${victorySvg(7)}</div><div class="fin-text">WORKOUT COMPLETE</div>`;
   document.body.append(box);
-  const CELL = 8, W = Math.ceil(innerWidth / CELL), H = Math.ceil(innerHeight / CELL), MAXI = Math.ceil(H * 0.46);
+  const CELL = 5, W = Math.ceil(innerWidth / CELL), H = Math.ceil(innerHeight / CELL), MAXI = Math.ceil(H * 0.46);
   const cv = box.querySelector("canvas"); cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d"), img = ctx.createImageData(W, H), fire = new Uint8Array(W * H);
   const clamp = (v) => Math.max(0, Math.min(255, v));

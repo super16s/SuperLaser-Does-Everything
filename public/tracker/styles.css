@@ -221,24 +221,20 @@ details.card > summary { border-radius: 12px; }
 .chart svg { border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } button:hover:not([aria-disabled="true"]), button:active:not([aria-disabled="true"]) { transform: none; } }
 
-/* ---- Today: prayer buttons + pixel celebrations ---- */
+/* ---- Today: prayer buttons + celebration light effects ---- */
 .card.prayer { padding: 10px; }
 .card.prayer button.giant { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.pxicon { image-rendering: pixelated; display: block; flex: none; }
 .cele { position: fixed; z-index: 45; pointer-events: none; overflow: hidden; border-radius: var(--radius); }
-.cele .spr { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 6px rgba(16, 24, 40, .35)); }
-.cele i { position: absolute; width: 7px; height: 7px; opacity: 0; image-rendering: pixelated; }
+.cele .ring { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 14px var(--c), inset 0 0 12px var(--c); opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+.cele i { position: absolute; width: 9px; height: 9px; border-radius: 50%; opacity: 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, .12), 0 0 10px 2px currentColor; }
 @media (prefers-reduced-motion: no-preference) {
-  .cele::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 62%); animation: celeglow 1.3s ease-out forwards; }
+  .cele::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 66%); animation: celeglow 1.3s ease-out forwards; }
   .cele.prayer::before { background: radial-gradient(circle at 50% 50%, rgba(255, 209, 102, .55), transparent 65%); }
   .cele.moon::before { background: radial-gradient(circle at 50% 50%, rgba(80, 100, 190, .45), transparent 65%); }
-  .cele .spr { animation: celepop 1.4s cubic-bezier(.2, 1.4, .4, 1) forwards; }
-  .cele.scale .spr { animation: celeswing 1.4s ease-in-out forwards; }
-  .cele.moon .spr, .cele.prayer .spr, .cele.bowl .spr, .cele.yogurt .spr { animation: celefloat 1.6s ease-out forwards; }
+  .cele .ring { animation: celering 1.1s cubic-bezier(.15, .7, .3, 1) forwards; }
+  .cele .ring.r2 { animation-delay: .18s; }
   .cele i { animation: celeparticle 1.1s ease-out forwards; }
-  @keyframes celepop { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -62%) scale(1); opacity: 0; } }
-  @keyframes celefloat { 0% { transform: translate(-50%, -30%) scale(.4); opacity: 0; } 30% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -95%) scale(1); opacity: 0; } }
-  @keyframes celeswing { 0% { transform: translate(-50%, -50%) scale(.3) rotate(0); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.2) rotate(-14deg); opacity: 1; } 45% { transform: translate(-50%, -50%) scale(1.1) rotate(12deg); } 65% { transform: translate(-50%, -50%) scale(1) rotate(-6deg); } 85% { opacity: 1; } 100% { transform: translate(-50%, -62%) rotate(0); opacity: 0; } }
+  @keyframes celering { 0% { opacity: .9; transform: translate(-50%, -50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(calc(var(--w, 360) / 36 * .6)); } }
   @keyframes celeparticle { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; } }
   @keyframes celeglow { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 }
@@ -304,12 +300,12 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .offrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line, rgba(128,128,128,.25)); }
 .offname { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 
-/* ---- workout-complete finale: pixel flames + victorious muscle man ---- */
+/* ---- workout-complete finale: smooth flames + victorious muscle man ---- */
 .finale { position: fixed; inset: 0; z-index: 70; background: rgba(12, 2, 0, .55); cursor: pointer; overflow: hidden; animation: finfade 4.4s ease forwards; }
-.finale canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.finale canvas { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); filter: blur(7px) saturate(1.15); }
 .fin-man { position: absolute; left: 50%; top: 24%; transform: translate(-50%, 0); animation: manrise .9s .45s cubic-bezier(.2, 1.4, .4, 1) both, fistbob .7s 1.4s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(255, 150, 0, .9)); }
 .fin-man svg { display: block; image-rendering: pixelated; }
-.fin-text { position: absolute; left: 0; right: 0; top: 62%; text-align: center; font: 900 clamp(1.7rem, 8.4vw, 2.8rem)/1.1 -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: .06em; color: #fff; text-shadow: 0 0 10px #ffb000, 0 0 26px #ff4d00, 3px 3px 0 #a30000; animation: fintext .5s 1.3s ease-out both; }
+.fin-text { position: absolute; left: 0; right: 0; top: 62%; text-align: center; font: 900 clamp(1.7rem, 8.4vw, 2.8rem)/1.1 -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: .06em; color: #fff; text-shadow: 0 0 10px #ffb000, 0 0 26px #ff4d00, 0 4px 14px rgba(120, 0, 0, .7); animation: fintext .5s 1.3s ease-out both; }
 @keyframes finfade { 0% { opacity: 0; } 10% { opacity: 1; } 84% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes manrise { from { transform: translate(-50%, 70vh) scale(.5); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
 @keyframes fistbob { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
