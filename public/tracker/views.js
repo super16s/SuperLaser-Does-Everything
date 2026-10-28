@@ -73,7 +73,7 @@ function foodSearch(S, ui, slot, cur, alts) {
   const local = ql ? alts.filter((a) => a.label.toLowerCase().includes(ql) || (a.ingredients || "").toLowerCase().includes(ql)) : [];
   let online = "";
   if (f?.status === "loading") online = `<p class="muted small" role="status">Searching Open Food Facts…</p>`;
-  else if (f?.status === "error") online = `<p class="small" role="status">Couldn't reach Open Food Facts (offline or busy). Your saved meals still work; try again in a minute.</p>`;
+  else if (f?.status === "error") online = `<p class="small" role="status">Couldn't reach Open Food Facts (offline or busy). Your saved meals still work; try again in a minute.${f.error ? `<br><span class="muted">${esc(f.error)}</span>` : ""}</p>`;
   else if (f?.status === "done") online = f.results.length
     ? `<h3 class="small" style="margin:8px 0 4px">Open Food Facts</h3>` + f.results.map((r, i) => {
         const opts = [...new Set([r.servingG, 100].filter(Boolean))];

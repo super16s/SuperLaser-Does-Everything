@@ -684,3 +684,9 @@ test("OFF library is capped at 40 saved products", () => {
   for (let i = 0; i < 45; i++) run(st, (s) => A.useFood(s, MON, "snack1", OFF.productToPreset(OFF.parseProduct({ ...PB, code: `c${i}` }), "snack1", 30)));
   assert.equal(st.state.mealPresets.filter((p) => p.source === "off").length, 40);
 });
+
+test("OFF failure message says what each endpoint did", async () => {
+  OFF.clearCache();
+  const f = async (u) => { if (u.includes("search.openfoodfacts")) throw new TypeError("Failed to fetch"); return jsonRes({}, false, 503); };
+  await assert.rejects(OFF.lookup("rice", f), /Search-a-licious: blocked or offline.*classic search: HTTP 503/);
+});

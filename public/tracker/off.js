@@ -32,7 +32,13 @@ export const searchUrl = (q) => `${SEARCH}?q=${encodeURIComponent(q.trim())}&pag
 export const legacyUrl = (q) => `${LEGACY}?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=8&fields=${FIELDS}`;
 export const productUrl = (code) => `${PRODUCT}${encodeURIComponent(code.trim())}.json?fields=${FIELDS}`;
 
-const getJson = async (f, url) => { const r = await f(url); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); };
+// 8 s cap so a stalled request becomes a readable error instead of an endless "Searching…".
+const getJson = async (f, url) => {
+  const ctl = typeof AbortController === "function" ? new AbortController() : null, timer = ctl && setTimeout(() => ctl.abort(), 8000);
+  try { const r = await f(url, ctl ? { signal: ctl.signal } : undefined); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json(); }
+  finally { clearTimeout(timer); }
+};
+const why = (e) => (e?.name === "AbortError" ? "timed out" : e?.message === "Failed to fetch" || e?.message === "Load failed" ? "blocked or offline (CORS/network)" : e?.message || "failed");
 const rows = (j) => (j?.hits || j?.products || []).map(parseProduct).filter(Boolean);
 
 // Small per-session cache so repeat searches don't spend the 10/min allowance.
@@ -50,7 +56,10 @@ export async function lookup(q, f = (...a) => globalThis.fetch(...a)) { // not a
     out = j?.status === 0 || !j?.product ? [] : [parseProduct({ code: key, ...j.product })].filter(Boolean);
   } else {
     try { out = rows(await getJson(f, searchUrl(key))); }
-    catch { out = rows(await getJson(f, legacyUrl(key))); }
+    catch (e1) {
+      try { out = rows(await getJson(f, legacyUrl(key))); }
+      catch (e2) { throw new Error(`Search-a-licious: ${why(e1)}; classic search: ${why(e2)}`); }
+    }
   }
   cache.set(key, out);
   return out;

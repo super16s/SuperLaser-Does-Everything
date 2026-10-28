@@ -458,7 +458,7 @@ async function runFoodSearch(slot, q) {
   render();
   if (q.length < 2) return;
   const mine = ui.food;
-  try { mine.results = await OFF.lookup(q); mine.status = "done"; } catch { mine.status = "error"; }
+  try { mine.results = await OFF.lookup(q); mine.status = "done"; } catch (e) { mine.status = "error"; mine.error = e.message; }
   if (ui.food === mine) render();
 }
 
