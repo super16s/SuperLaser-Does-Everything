@@ -1,8 +1,8 @@
 // Offline shell for the tracker. All data lives in the page's localStorage, so
 // the only thing to cache is the code. Network-first so updates arrive when
 // online; falls back to cache when offline.
-const CACHE = "gain-tracker-v2";
-const SHELL = ["./", "index.html", "styles.css", "app.js", "logic.js", "store.js", "views.js", "sprites.js", "charts.js", "reminders.js", "manifest.json", "../icons/icon-192.png", "../icons/icon-512.png"];
+const CACHE = "gain-tracker-v3";
+const SHELL = ["./", "index.html", "styles.css", "app.js", "logic.js", "store.js", "views.js", "sprites.js", "charts.js", "reminders.js", "off.js", "manifest.json", "../icons/icon-192.png", "../icons/icon-512.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
@@ -10,7 +10,7 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
+  if (e.request.method !== "GET" || new URL(e.request.url).origin !== self.location.origin) return; // API calls (Open Food Facts) go straight to the network, never cached
   e.respondWith(
     fetch(e.request).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }

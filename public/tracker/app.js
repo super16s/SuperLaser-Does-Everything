@@ -3,6 +3,7 @@
 import { createStore, actions as A } from "./store.js";
 import * as L from "./logic.js";
 import * as V from "./views.js";
+import * as OFF from "./off.js";
 import { CELE, pixelIcon, victorySvg } from "./sprites.js";
 import { startScheduler, snooze, skipToday, notify, askPermission } from "./reminders.js";
 
@@ -326,6 +327,15 @@ const handlers = {
     const label = L.PRAYERS.find((p) => p.id === d.w).label, had = L.getDay(S(), ui.date).prayer?.[d.w]?.status === "done";
     act((s) => A.setPrayer(s, ui.date, d.w, "done"), had ? `${label} cleared` : `${label} logged`);
   },
+  usemeal: (d) => act((s) => A.swapMeal(s, ui.date, d.slot, d.id), "Meal chosen"),
+  fsearch(d) { runFoodSearch(d.slot, document.getElementById(`fq-${d.slot}`)?.value ?? ""); },
+  usefood(d) {
+    const prod = ui.food?.results?.[+d.i];
+    if (!prod) return;
+    const preset = OFF.productToPreset(prod, d.slot, +d.g);
+    ui.food = null;
+    act((s) => A.useFood(s, ui.date, d.slot, preset), `${prod.name} chosen`);
+  },
   xadd(d) { const f = L.FOODS.find((x) => x.id === d.id); act((s) => A.addExtra(s, ui.date, { foodId: f.id, name: f.name, serving: f.serving, calories: f.calories, protein: f.protein }), `${f.name} added`); },
   xstep: (d) => act((s) => A.stepExtra(s, ui.date, d.id, +d.v), "Servings updated"),
   xrm: (d) => act((s) => A.removeExtra(s, ui.date, d.id), "Removed"),
@@ -441,6 +451,17 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#menu").hidden) closeMenu(); });
 
+async function runFoodSearch(slot, q) {
+  q = q.trim();
+  if (ui.food?.slot === slot && ui.food.q === q && ui.food.status !== "error") return; // blur + tap on Search fire together
+  ui.food = { slot, q, status: q.length >= 2 ? "loading" : "idle", results: [] };
+  render();
+  if (q.length < 2) return;
+  const mine = ui.food;
+  try { mine.results = await OFF.lookup(q); mine.status = "done"; } catch { mine.status = "error"; }
+  if (ui.food === mine) render();
+}
+
 // text / select / date / file inputs
 const NUMERIC = new Set(["calories", "protein"]);
 document.addEventListener("change", async (e) => {
@@ -450,6 +471,7 @@ document.addEventListener("change", async (e) => {
   switch (d.c) {
     case "date": if (t.value) setDate(t.value); break;
     case "start": if (t.value) act((s) => { s.profile.startDate = t.value; }, "Start date updated"); break;
+    case "foodq": runFoodSearch(d.slot, t.value); break;
     case "swap": act((s) => A.swapMeal(s, ui.date, d.slot, t.value), "Meal swapped"); break;
     case "rtime": if (t.value) act((s) => { s.reminders.find((r) => r.id === d.id).time = t.value; }, "Reminder time"); else render(); break;
     case "rsnooze": act((s) => { s.reminders.find((r) => r.id === d.id).snoozeMinutes = +t.value; }, "Snooze length"); break;

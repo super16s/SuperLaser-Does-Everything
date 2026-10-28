@@ -145,6 +145,14 @@ as its own PWA.
   weekly means, which is dominated by water-weight noise.
 - Meal presets are planning estimates; changing one doesn't rewrite meals
   already logged. Boosters add nothing until foods are assigned.
+- **Food search (Open Food Facts)**: each meal card has a search box. Typing
+  filters your saved meals; **Search** (or Enter) also queries Open Food Facts
+  (8–14 digits = barcode lookup). Picking a result at a gram weight saves it
+  to that slot's library (max 40 saved products, works offline afterwards) and
+  the usual portion chips apply. Data is crowdsourced per 100 g, so check labels
+  when it matters. Search is user-triggered, cached per session, and sends no
+  headers, email or account (Open Food Facts allows 10 searches/min). The
+  service worker never caches these API calls.
 - **Training layout**: three full-body gym days (Mon/Wed/Fri: A, B, A) and
   two home days (Tue/Thu: bodyweight + pull-up bar); Saturday can be made a
   third home day from the routine picker. Sets follow a 4-week wave with a

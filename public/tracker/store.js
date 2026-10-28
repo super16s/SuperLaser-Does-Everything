@@ -146,6 +146,14 @@ export const actions = {
     const m = d.meals?.[slot], p = s.mealPresets.find((x) => x.id === presetId);
     if (m && p) Object.assign(m, { presetId, calories: p.calories, protein: p.protein });
   },
+  // Open Food Facts pick: saved into the slot's library (works offline afterwards) and selected for the day.
+  useFood(s, date, slot, preset) {
+    const i = s.mealPresets.findIndex((x) => x.id === preset.id);
+    if (i < 0) s.mealPresets.push(preset); else s.mealPresets[i] = { ...s.mealPresets[i], ...preset };
+    const off = s.mealPresets.filter((x) => x.source === "off");
+    for (const old of off.slice(0, Math.max(0, off.length - 40))) if (old.id !== preset.id && old.id !== s.lastChoice?.[slot]) s.mealPresets.splice(s.mealPresets.indexOf(old), 1);
+    actions.swapMeal(s, date, slot, preset.id);
+  },
   addBooster(s, date, boosterId) {
     const b = s.boosters.find((x) => x.id === boosterId);
     if (!b || !b.foods.trim()) return; // unassigned calories are never counted

@@ -296,9 +296,13 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 .exblock .reststrip { margin-top: 8px; }
 
 /* meal picker dropdown */
-.mealpick { display: block; }
 .slotname { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.mealpick select { width: 100%; min-height: 50px; font-size: 1.05rem; font-weight: 700; padding: 8px 12px; border-radius: 14px; text-overflow: ellipsis; }
+.mealname { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+.foodsearch input[type=search] { flex: 1; min-width: 0; min-height: 46px; font-size: 1rem; padding: 8px 12px; border-radius: 14px; }
+.pickrows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.pickrow { text-align: left; justify-content: flex-start; }
+.offrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line, rgba(128,128,128,.25)); }
+.offname { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 
 /* ---- workout-complete finale: pixel flames + victorious muscle man ---- */
 .finale { position: fixed; inset: 0; z-index: 70; background: rgba(12, 2, 0, .55); cursor: pointer; overflow: hidden; animation: finfade 4.4s ease forwards; }

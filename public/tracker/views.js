@@ -4,6 +4,7 @@
 import * as L from "./logic.js";
 import { lineChart, barChart } from "./charts.js";
 import { scene, pixelIcon, MEAL_KIND } from "./sprites.js";
+import { productToPreset } from "./off.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const attrs = (o) => Object.entries(o).map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ");
@@ -55,14 +56,34 @@ function mealCard(S, ui, slot) {
   const cur = log ? log.multiplier : undefined;
   const chips = L.PORTIONS.map((o) => btn(o.label, { a: "meal", slot: slot.id, v: o.value }, { on: cur === o.value })).join("");
   const logged = log ? (log.multiplier > 0 ? `Logged: ${nf(log.calories * log.multiplier)} kcal · ${nf(log.protein * log.multiplier)} g protein` : "Logged: skipped (0 kcal)") : "Not logged";
-  const opts = alts.map((a) => `<option value="${esc(a.id)}"${a.id === p.id ? " selected" : ""}>${esc(a.label)} · ${nf(a.calories)}</option>`).join("");
   return `<section class="card" id="meal-${slot.id}" data-cele="${MEAL_KIND[slot.id]}" data-done="${log && log.multiplier > 0 ? 1 : 0}" aria-label="${esc(slot.label)}">
-    <label class="mealpick"><span class="slotname">${esc(slot.label)}</span><select data-c="swap" data-slot="${slot.id}" aria-label="${esc(slot.label)}: choose a meal">${opts}</select></label>
+    <span class="slotname">${esc(slot.label)}</span>
+    <div class="mealname">${esc(p.label)}</div>
+    ${foodSearch(S, ui, slot, p, alts)}
     <div class="muted small" style="margin:6px 0">${nf(p.calories)} kcal · ${nf(p.protein)} g protein per full portion</div>
     <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
     <div class="muted small" style="margin-top:4px">${esc(p.ingredients)}</div>
     ${p.amounts ? `<details><summary class="small muted">About this estimate</summary><p class="small">${esc(p.amounts)}</p></details>` : ""}</section>`;
+}
+
+function foodSearch(S, ui, slot, cur, alts) {
+  const f = ui.food && ui.food.slot === slot.id ? ui.food : null, q = f?.q || "", ql = q.trim().toLowerCase();
+  const pick = (a) => btn(`${esc(a.label)} <span class="muted small">${nf(a.calories)} kcal · ${nf(a.protein)} g</span>`, { a: "usemeal", slot: slot.id, id: a.id }, { on: a.id === cur.id, cls: "pickrow" });
+  const local = ql ? alts.filter((a) => a.label.toLowerCase().includes(ql) || (a.ingredients || "").toLowerCase().includes(ql)) : [];
+  let online = "";
+  if (f?.status === "loading") online = `<p class="muted small" role="status">Searching Open Food Facts…</p>`;
+  else if (f?.status === "error") online = `<p class="small" role="status">Couldn't reach Open Food Facts (offline or busy). Your saved meals still work; try again in a minute.</p>`;
+  else if (f?.status === "done") online = f.results.length
+    ? `<h3 class="small" style="margin:8px 0 4px">Open Food Facts</h3>` + f.results.map((r, i) => {
+        const opts = [...new Set([r.servingG, 100].filter(Boolean))];
+        return `<div class="offrow"><div class="offname">${esc(r.name)}${r.brand ? ` <span class="muted small">${esc(r.brand)}</span>` : ""}<div class="muted small">${nf(r.per100.calories)} kcal · ${r.per100.protein} g protein per 100 g</div></div><div class="row">${opts.map((g) => btn(`${Math.round(g)} g`, { a: "usefood", slot: slot.id, i, g }, { aria: `Use ${r.name}, ${Math.round(g)} grams` })).join("")}</div></div>`;
+      }).join("")
+    : `<p class="muted small" role="status">Nothing with calories found online. Try a simpler word, or add it under “Anything else you ate”.</p>`;
+  const saved = alts.map(pick).join("");
+  return `<div class="foodsearch"><div class="row"><input type="search" id="fq-${slot.id}" data-c="foodq" data-slot="${slot.id}" value="${esc(q)}" placeholder="Search foods or barcode" enterkeyhint="search" autocomplete="off" aria-label="${esc(slot.label)}: search foods" />${btn("Search", { a: "fsearch", slot: slot.id }, { cls: "primary" })}</div>
+    ${local.length ? `<div class="pickrows">${local.map(pick).join("")}</div>` : ""}${online}
+    <details data-dk="saved-${slot.id}"><summary class="small muted">Saved meals (${alts.length})</summary><div class="pickrows">${saved}</div></details></div>`;
 }
 
 function checklist(S, ui) {
