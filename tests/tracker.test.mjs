@@ -634,59 +634,27 @@ test("v5 migration still adds the morning snack reminder and raises an untouched
   assert.equal(asOld({ calorieTarget: 2950 }).profile.calorieTarget, 2950);
 });
 
-// ---------- Open Food Facts (mocked fetch; the live API isn't reachable from the build sandbox) ----------
-import * as OFF from "../public/tracker/off.js";
-const jsonRes = (body, ok = true, status = 200) => ({ ok, status, json: async () => body });
-const PB = { code: "123", product_name: "Peanut Butter", brands: "Acme,Other", serving_quantity: 32, nutriments: { "energy-kcal_100g": 600, proteins_100g: 25 } };
-
-test("OFF parseProduct: kcal fallback from kJ, skips products without calories, never invents values", () => {
-  assert.equal(OFF.parseProduct({ product_name: "x", nutriments: {} }), null);
-  assert.equal(OFF.parseProduct({ nutriments: { "energy-kcal_100g": 5 } }), null);
-  const kj = OFF.parseProduct({ code: "9", product_name: "Oat", nutriments: { energy_100g: 1000 } });
-  assert.equal(Math.round(kj.per100.calories), 239); assert.equal(kj.per100.protein, 0);
-  const p = OFF.parseProduct(PB);
-  assert.deepEqual([p.brand, p.servingG, p.per100.calories], ["Acme", 32, 600]);
-});
-
-test("OFF lookup: text uses search, falls back to legacy on failure, caches, barcode uses product endpoint", async () => {
-  OFF.clearCache();
-  const calls = [];
-  const f = async (url) => {
-    calls.push(url);
-    if (url.startsWith("https://search.openfoodfacts.org")) return jsonRes({}, false, 503);
-    if (url.includes("cgi/search.pl")) return jsonRes({ products: [PB, { product_name: "nocal", nutriments: {} }] });
-    return jsonRes({ status: 1, product: { product_name: "Bar", nutriments: { "energy-kcal_100g": 400 } } });
-  };
-  const r = await OFF.lookup("peanut butter", f);
-  assert.equal(r.length, 1); assert.equal(calls.length, 2);
-  await OFF.lookup("Peanut Butter ", f); assert.equal(calls.length, 2); // cached
-  const b = await OFF.lookup("0123456789012", f);
-  assert.ok(calls.at(-1).includes("/api/v2/product/0123456789012.json")); assert.equal(b[0].name, "Bar");
-  assert.deepEqual(await OFF.lookup("999999999999", async () => jsonRes({ status: 0 })), []);
-  await assert.rejects(OFF.lookup("zzz", async () => jsonRes({}, false, 500)));
-});
-
-test("OFF pick becomes a library meal, counts in totals at the chosen grams and portion, and survives reload", () => {
+// ---------- Manual meal entry ----------
+test("manual meal: logs the typed numbers, is reusable, same name updates, scales with chips", () => {
   const st = fresh();
-  const preset = OFF.productToPreset(OFF.parseProduct(PB), "snack1", 32);
-  assert.equal(preset.calories, 192); assert.equal(preset.protein, 8);
-  run(st, (s) => A.useFood(s, MON, "snack1", preset));
-  assert.equal(L.currentPreset(st.state, MON, "snack1").id, preset.id);
-  run(st, (s) => A.setMeal(s, MON, "snack1", 1.5));
-  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 288, protein: 12 });
-  const again = createStore(mem()); again.importJson(st.exportJson());
-  assert.ok(again.state.mealPresets.some((p) => p.id === preset.id));
-  assert.equal(L.currentPreset(again.state, TUE, "snack1").id, preset.id); // next day remembers it
+  assert.equal(run(st, (s) => A.saveMeal(s, MON, "lunch", { name: "Mom's chili", calories: "700", protein: "45" })), undefined);
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 700, protein: 45 });
+  run(st, (s) => A.setMeal(s, MON, "lunch", 0.5));
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 350, protein: 23 });
+  run(st, (s) => A.saveMeal(s, MON, "lunch", { name: "mom's chili", calories: 650, protein: 40 }));
+  assert.equal(st.state.mealPresets.filter((p) => p.source === "manual").length, 1);
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 650, protein: 40 });
+  assert.equal(L.currentPreset(st.state, TUE, "lunch").calories, 650); // next day starts on it
 });
 
-test("OFF library is capped at 40 saved products", () => {
+test("manual meal: rejects missing/zero calories, allows blank protein and name, caps saved list", () => {
   const st = fresh();
-  for (let i = 0; i < 45; i++) run(st, (s) => A.useFood(s, MON, "snack1", OFF.productToPreset(OFF.parseProduct({ ...PB, code: `c${i}` }), "snack1", 30)));
-  assert.equal(st.state.mealPresets.filter((p) => p.source === "off").length, 40);
-});
-
-test("OFF failure message says what each endpoint did", async () => {
-  OFF.clearCache();
-  const f = async (u) => { if (u.includes("search.openfoodfacts")) throw new TypeError("Failed to fetch"); return jsonRes({}, false, 503); };
-  await assert.rejects(OFF.lookup("rice", f), /Search-a-licious: blocked or offline.*classic search: HTTP 503/);
+  const before = JSON.stringify(st.state.mealPresets);
+  run(st, (s) => { A.saveMeal(s, MON, "lunch", { name: "x", calories: "", protein: 5 }); A.saveMeal(s, MON, "lunch", { name: "x", calories: 0, protein: 5 }); });
+  assert.equal(JSON.stringify(st.state.mealPresets), before); assert.equal(L.getDay(st.state, MON).meals, undefined);
+  run(st, (s) => A.saveMeal(s, MON, "dinner", { calories: "500" }));
+  assert.deepEqual(L.mealTotals(st.state, MON), { calories: 500, protein: 0 });
+  assert.equal(L.currentPreset(st.state, MON, "dinner").label, "My meal");
+  for (let i = 0; i < 70; i++) run(st, (s) => A.saveMeal(s, MON, "snack", { name: `n${i}`, calories: 100 + i }));
+  assert.equal(st.state.mealPresets.filter((p) => p.source === "manual").length, 60);
 });

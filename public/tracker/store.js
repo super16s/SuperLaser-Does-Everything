@@ -146,13 +146,22 @@ export const actions = {
     const m = d.meals?.[slot], p = s.mealPresets.find((x) => x.id === presetId);
     if (m && p) Object.assign(m, { presetId, calories: p.calories, protein: p.protein });
   },
-  // Open Food Facts pick: saved into the slot's library (works offline afterwards) and selected for the day.
-  useFood(s, date, slot, preset) {
-    const i = s.mealPresets.findIndex((x) => x.id === preset.id);
+  // Manual entry: you type the name and numbers. Saved to the slot's library (so it's one tap next time)
+  // and logged as a full portion; the portion chips can then scale it. Same name = same entry, updated.
+  saveMeal(s, date, slot, { name, calories, protein }) {
+    const kcal = Math.round(Number(calories)), pro = Math.round((Number(protein) || 0) * 10) / 10;
+    if (!(kcal > 0) || !(pro >= 0)) return false;
+    const label = String(name || "").trim().slice(0, 60) || "My meal";
+    const id = `my-${slot}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "meal"}`;
+    const preset = { id, slot, label, calories: kcal, protein: pro, ingredients: "Entered by hand", amounts: "", isDefault: false, source: "manual" };
+    const i = s.mealPresets.findIndex((x) => x.id === id);
     if (i < 0) s.mealPresets.push(preset); else s.mealPresets[i] = { ...s.mealPresets[i], ...preset };
-    const off = s.mealPresets.filter((x) => x.source === "off");
-    for (const old of off.slice(0, Math.max(0, off.length - 40))) if (old.id !== preset.id && old.id !== s.lastChoice?.[slot]) s.mealPresets.splice(s.mealPresets.indexOf(old), 1);
-    actions.swapMeal(s, date, slot, preset.id);
+    const mine = s.mealPresets.filter((x) => x.source === "manual");
+    for (const old of mine.slice(0, Math.max(0, mine.length - 60))) if (old.id !== id && old.id !== s.lastChoice?.[slot]) s.mealPresets.splice(s.mealPresets.indexOf(old), 1);
+    actions.swapMeal(s, date, slot, id);
+    const d = day(s, date);
+    (d.meals ||= {})[slot] = { presetId: id, multiplier: 1, calories: kcal, protein: pro, status: "done", ...stamp() };
+    return true;
   },
   addBooster(s, date, boosterId) {
     const b = s.boosters.find((x) => x.id === boosterId);

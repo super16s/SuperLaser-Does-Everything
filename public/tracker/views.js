@@ -4,7 +4,6 @@
 import * as L from "./logic.js";
 import { lineChart, barChart } from "./charts.js";
 import { scene, MEAL_KIND } from "./sprites.js";
-import { productToPreset } from "./off.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const attrs = (o) => Object.entries(o).map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ");
@@ -59,7 +58,7 @@ function mealCard(S, ui, slot) {
   return `<section class="card" id="meal-${slot.id}" data-cele="${MEAL_KIND[slot.id]}" data-done="${log && log.multiplier > 0 ? 1 : 0}" aria-label="${esc(slot.label)}">
     <span class="slotname">${esc(slot.label)}</span>
     <div class="mealname">${esc(p.label)}</div>
-    ${foodSearch(S, ui, slot, p, alts)}
+    ${mealEntry(S, ui, slot, p, alts)}
     <div class="muted small" style="margin:6px 0">${nf(p.calories)} kcal · ${nf(p.protein)} g protein per full portion</div>
     <div class="chips portions" role="group" aria-label="${esc(slot.label)} portion" style="margin:8px 0">${chips}</div>
     <div class="muted">${logged}</div>
@@ -67,23 +66,17 @@ function mealCard(S, ui, slot) {
     ${p.amounts ? `<details><summary class="small muted">About this estimate</summary><p class="small">${esc(p.amounts)}</p></details>` : ""}</section>`;
 }
 
-function foodSearch(S, ui, slot, cur, alts) {
-  const f = ui.food && ui.food.slot === slot.id ? ui.food : null, q = f?.q || "", ql = q.trim().toLowerCase();
+function mealEntry(S, ui, slot, cur, alts) {
+  const mine = alts.filter((a) => a.source === "manual"), starters = alts.filter((a) => a.source !== "manual");
   const pick = (a) => btn(`${esc(a.label)} <span class="muted small">${nf(a.calories)} kcal · ${nf(a.protein)} g</span>`, { a: "usemeal", slot: slot.id, id: a.id }, { on: a.id === cur.id, cls: "pickrow" });
-  const local = ql ? alts.filter((a) => a.label.toLowerCase().includes(ql) || (a.ingredients || "").toLowerCase().includes(ql)) : [];
-  let online = "";
-  if (f?.status === "loading") online = `<p class="muted small" role="status">Searching Open Food Facts…</p>`;
-  else if (f?.status === "error") online = `<p class="small" role="status">Couldn't reach Open Food Facts (offline or busy). Your saved meals still work; try again in a minute.${f.error ? `<br><span class="muted">${esc(f.error)}</span>` : ""}</p>`;
-  else if (f?.status === "done") online = f.results.length
-    ? `<h3 class="small" style="margin:8px 0 4px">Open Food Facts</h3>` + f.results.map((r, i) => {
-        const opts = [...new Set([r.servingG, 100].filter(Boolean))];
-        return `<div class="offrow"><div class="offname">${esc(r.name)}${r.brand ? ` <span class="muted small">${esc(r.brand)}</span>` : ""}<div class="muted small">${nf(r.per100.calories)} kcal · ${r.per100.protein} g protein per 100 g</div></div><div class="row">${opts.map((g) => btn(`${Math.round(g)} g`, { a: "usefood", slot: slot.id, i, g }, { aria: `Use ${r.name}, ${Math.round(g)} grams` })).join("")}</div></div>`;
-      }).join("")
-    : `<p class="muted small" role="status">Nothing with calories found online. Try a simpler word, or add it under “Anything else you ate”.</p>`;
-  const saved = alts.map(pick).join("");
-  return `<div class="foodsearch"><div class="row"><input type="search" id="fq-${slot.id}" data-c="foodq" data-slot="${slot.id}" value="${esc(q)}" placeholder="Search foods or barcode" enterkeyhint="search" autocomplete="off" aria-label="${esc(slot.label)}: search foods" />${btn("Search", { a: "fsearch", slot: slot.id }, { cls: "primary" })}</div>
-    ${local.length ? `<div class="pickrows">${local.map(pick).join("")}</div>` : ""}${online}
-    <details data-dk="saved-${slot.id}"><summary class="small muted">Saved meals (${alts.length})</summary><div class="pickrows">${saved}</div></details></div>`;
+  const field = (k, label, val, extra) => `<label class="mfield"><span class="small muted">${label}</span><input id="m${k}-${slot.id}" value="${esc(val)}" ${extra} /></label>`;
+  return `<div class="mealentry"><div class="mgrid">
+      ${field("n", "Meal name", cur.source === "manual" ? cur.label : "", 'type="text" placeholder="What you ate" autocomplete="off" maxlength="60"')}
+      ${field("k", "Calories", cur.source === "manual" ? cur.calories : "", 'type="text" inputmode="numeric" placeholder="kcal" autocomplete="off"')}
+      ${field("p", "Protein g", cur.source === "manual" ? cur.protein : "", 'type="text" inputmode="decimal" placeholder="g" autocomplete="off"')}
+    </div>${btn("Save &amp; log", { a: "msave", slot: slot.id }, { cls: "primary block" })}
+    ${mine.length ? `<details data-dk="mine-${slot.id}"><summary class="small muted">Your meals (${mine.length})</summary><div class="pickrows">${mine.map(pick).join("")}</div></details>` : ""}
+    <details data-dk="starter-${slot.id}"><summary class="small muted">Starter estimates (${starters.length})</summary><div class="pickrows">${starters.map(pick).join("")}</div></details></div>`;
 }
 
 function checklist(S, ui) {

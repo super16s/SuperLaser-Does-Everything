@@ -1,8 +1,8 @@
 // Offline shell for the tracker. All data lives in the page's localStorage, so
 // the only thing to cache is the code. Network-first so updates arrive when
 // online; falls back to cache when offline.
-const CACHE = "gain-tracker-v5";
-const SHELL = ["./", "index.html", "styles.css", "app.js", "logic.js", "store.js", "views.js", "sprites.js", "charts.js", "reminders.js", "off.js", "manifest.json", "../icons/icon-192.png", "../icons/icon-512.png"];
+const CACHE = "gain-tracker-v6";
+const SHELL = ["./", "index.html", "styles.css", "app.js", "logic.js", "store.js", "views.js", "sprites.js", "charts.js", "reminders.js", "manifest.json", "../icons/icon-192.png", "../icons/icon-512.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
