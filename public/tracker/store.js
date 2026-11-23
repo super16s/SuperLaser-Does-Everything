@@ -237,7 +237,7 @@ export const actions = {
     s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod && r.id !== id)); // replaces skips and older severity rows
     if (!row) { row = { id, date, tod, pain: null, note: "", skipped: false, ...stamp() }; s.pain.push(row); }
     Object.assign(row, patch, stamp());
-    if (row.pain === null && !row.note) s.pain = s.pain.filter((r) => r !== row);
+    if (row.pain === null && !row.note && !row.where?.length) s.pain = s.pain.filter((r) => r !== row);
   },
   painSkip(s, date, tod) {
     s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod));
@@ -284,13 +284,6 @@ export const actions = {
     d.loads ||= {};
     if (lb == null) delete d.loads[exId]; else d.loads[exId] = { lb: Math.round(lb * 10) / 10, ...stamp() };
     if (!Object.keys(d.loads).length) delete d.loads;
-    prune(s, date);
-  },
-  setReadiness(s, date, id) {
-    const d = day(s, date);
-    d.readiness ||= {};
-    if (d.readiness[id]) delete d.readiness[id]; else d.readiness[id] = stamp();
-    if (!Object.keys(d.readiness).length) delete d.readiness;
     prune(s, date);
   },
 

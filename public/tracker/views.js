@@ -229,11 +229,10 @@ export function workout(S, ui) {
       : `<p>Rest day. Nothing here counts against workout adherence.</p>`;
   } else {
     const exs = L.exercisesForDate(S, date), prog = L.workoutProgress(S, date);
-    const hasUpper = exs.some((e) => e.upper);
-    const rd = day.readiness || {}, rdOk = L.READINESS.every((r) => rd[r.id]);
-    const readiness = hasUpper ? `<div class="alert ${rdOk ? "info" : ""}"><strong>Pre-session check (arm and neck)</strong>
-      <div class="stack" style="margin-top:6px">${L.READINESS.map((r) => btn(r.label, { a: "ready", id: r.id }, { on: !!rd[r.id] })).join("")}</div>
-      <p class="small" style="margin:8px 0 0">${rdOk ? "All clear for today. Add load or reps gradually; stop if symptoms appear." : "If any of these is a no, do the lower-body sets only today and skip the upper-body ones."}</p></div>` : "";
+    const pre = L.painRows(S, date, "before").find((r) => !r.skipped) || {}, preP = L.rowPain(pre);
+    const readiness = `<div class="alert ${preP === true ? "" : "info"}"><strong>Pre-session check</strong>
+      <div class="grid-btns" style="--n:2;margin-top:6px">${btn("No pain", { a: "bpain", v: "no" }, { on: preP === false })}${btn("Pain", { a: "bpain", v: "yes" }, { on: preP === true })}</div>
+      ${preP === true ? `<div class="grid-btns" style="--n:2;margin-top:8px" role="group" aria-label="Where">${L.PAIN_WHERE.map((w) => btn(w.label, { a: "bwhere", v: w.id }, { on: !!pre.where?.includes(w.id) })).join("")}</div>${pre.where?.includes("upper") ? `<p class="small" style="margin:8px 0 0">Upper-body pain: consider doing the lower-body sets only today.</p>` : ""}` : ""}</div>`;
     const w = L.waveInfo(S, date);
     const wave = `<div class="alert info"><strong>Week ${w.weekInBlock + 1} of 4${w.deload ? " — deload" : ""}</strong> · stop each set with ${w.rir}. Never to failure.
       <div class="small" style="margin-top:4px">If you add load: aim for ${w.reps} reps. When every set hits the top of the range with 2+ reps left, add the smallest increment next time. Rest 2–3 min on the big lifts.${L.isDensityWeek(S, date) ? " <strong>Density week:</strong> the marked leg lift is 8 sets with short rests. Keep it to about 2 reps in reserve, use a load where the last sets are hard but clean, and stop early if form or neck/elbow comfort slips." : ""}</div></div>`;

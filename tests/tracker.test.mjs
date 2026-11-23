@@ -211,13 +211,16 @@ test("yoga: four stages = yoga done; meditation separate", () => {
 });
 
 
-test("readiness ticks are per-day and toggle", () => {
+test("pre-session check is the Before-activity pain check-in, with where", () => {
   const st = fresh();
-  run(st, (s) => A.setReadiness(s, MON, "rom"));
-  assert.ok(L.getDay(st.state, MON).readiness.rom);
+  run(st, (s) => A.painLog(s, MON, "before", { pain: true, where: ["upper"] }));
+  assert.equal(L.painDay(st.state, MON), "pain");
+  assert.deepEqual(L.painNotes(st.state, MON), ["Before activity: Upper body"]);
+  run(st, (s) => A.painLog(s, MON, "before", { where: ["upper", "lower"] }));
+  assert.match(L.painNotes(st.state, MON)[0], /Upper body \+ Lower body/);
+  run(st, (s) => A.painLog(s, MON, "before", { pain: false, where: [] }));
+  assert.equal(L.painDay(st.state, MON), "none");
   assert.equal(L.getDay(st.state, TUE).readiness, undefined);
-  run(st, (s) => A.setReadiness(s, MON, "rom"));
-  assert.equal(L.getDay(st.state, MON).readiness, undefined);
 });
 
 

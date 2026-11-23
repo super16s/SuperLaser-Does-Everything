@@ -245,13 +245,8 @@ export const UPPER_BODY = [
   ex("u-tri-oh", "Overhead cable triceps extension", 2, "10–15", { phase: 1, upper: true, days: ["B"] }),
 ];
 
-// Quick self-check before upper-body work. Advisory: if anything is unticked it
-// recommends lower-body only that day.
-export const READINESS = [
-  { id: "rom", label: "Full elbow range today with no pain" },
-  { id: "resist", label: "No pain with light palm-up resistance" },
-  { id: "nextday", label: "No symptoms the day after my last upper-body session" },
-];
+// Pre-session check: pain or no pain, then where. It is the "Before activity" pain check-in.
+export const PAIN_WHERE = [{ id: "upper", label: "Upper body" }, { id: "lower", label: "Lower body" }];
 
 // Progression ladders (easier → harder variants of the same movement). The shown
 // variant follows state.progression (you move up with the Progress button).
@@ -612,7 +607,8 @@ export function painDay(state, date) {
   const v = painRows(state, date).map(rowPain).filter((x) => x !== null);
   return v.length ? (v.some(Boolean) ? "pain" : "none") : null;
 }
-export const painNotes = (state, date) => painRows(state, date).filter((r) => !r.skipped && r.note).map((r) => `${PAIN.times.find((t) => t.id === r.tod)?.label || r.tod}: ${r.note}`);
+export const painWhere = (r) => (r.where || []).map((w) => PAIN_WHERE.find((x) => x.id === w)?.label).filter(Boolean).join(" + ");
+export const painNotes = (state, date) => painRows(state, date).filter((r) => !r.skipped && (r.note || r.where?.length)).map((r) => `${PAIN.times.find((t) => t.id === r.tod)?.label || r.tod}: ${[painWhere(r), r.note].filter(Boolean).join(" — ")}`);
 
 // ---------- Checklist status ----------
 
@@ -749,8 +745,6 @@ export function workoutExport(state, date) {
     });
     lines.push("", `${e.name} — ${e.sets} × ${e.reps}${load != null ? ` @ ${load} lb` : ""}${e.isDensity ? " (density block)" : ""}`, `  Sets ${marks.join("  ")}`);
   }
-  const rd = day.readiness ? READINESS.filter((r) => day.readiness[r.id]).map((r) => r.label) : [];
-  if (rd.length) lines.push("", `Pre-session check ticked: ${rd.join("; ")}`);
   const pd = painDay(state, date), pn = painNotes(state, date);
   if (pd) lines.push("", `Pain: ${pd === "pain" ? "yes" : "no"}${pn.length ? ` (${pn.join("; ")})` : ""}`);
   const q = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };

@@ -132,10 +132,8 @@ as its own PWA.
   server involved. Export JSON/CSV and import JSON from Settings; clearing
   site data deletes everything, so back up occasionally. Every change is undoable.
 - **Training safety**: there are no clinician-clearance gates. Everything is
-  available from day one; a short pre-session check (pain-free range, no pain
-  with light palm-up resistance, no symptoms the day after) advises
-  lower-body-only if anything is a no. Curls and underhand pulling are left
-  out, and red-flag pain options show a warning. The app never diagnoses.
+  available from day one; a short pre-session check on the Workout tab (No pain / Pain, then Upper or Lower body; it is saved as the "Before activity" pain check-in) suggests lower-body-only for upper-body pain. Curls and underhand pulling are left
+  out, The app never diagnoses.
 - **Reminders** fire only while the app is open or backgrounded — a web app
   can't wake itself when closed (that needs server push or a native app).
   They never log anything. "Mark done" actions are deliberately omitted,

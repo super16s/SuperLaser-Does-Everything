@@ -384,7 +384,14 @@ const handlers = {
     if (dir < 0) return go();
     showMenu(`Progress ${name}?`, [{ label: "Yes — top of range on every set, 2+ reps left, no elbow/neck symptoms next day", fn: go }]);
   },
-  ready: (d) => act((s) => A.setReadiness(s, ui.date, d.id), "Readiness updated"),
+  bpain(d) {
+    const pre = L.painRows(S(), ui.date, "before").find((r) => !r.skipped) || {}, cur = L.rowPain(pre), v = d.v === "yes", next = cur === v ? null : v;
+    act((s) => A.painLog(s, ui.date, "before", { pain: next, where: next === true ? pre.where || [] : [] }), next === null ? "Pre-session check cleared" : v ? "Pain logged" : "No pain logged");
+  },
+  bwhere(d) {
+    const pre = L.painRows(S(), ui.date, "before").find((r) => !r.skipped) || {}, cur = pre.where || [];
+    act((s) => A.painLog(s, ui.date, "before", { where: cur.includes(d.v) ? cur.filter((x) => x !== d.v) : [...cur, d.v] }), "Location updated");
+  },
   rcat: (d) => act((s) => { s.reminderCategories[d.id] = s.reminderCategories[d.id] === false; }, "Reminder category"),
   ron: (d) => act((s) => { const r = s.reminders.find((x) => x.id === d.id); r.enabled = !r.enabled; }, "Reminder"),
   async notifyperm() { await askPermission(); render(); },
