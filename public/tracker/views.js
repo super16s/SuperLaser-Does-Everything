@@ -272,46 +272,34 @@ export function workout(S, ui) {
 
 // ---------- Recovery ----------
 
-function trendCharts(S, ui) {
-  const labels = [], days = [];
-  for (let i = 6; i >= 0; i--) { const d = L.addDays(ui.date, -i); days.push(d); labels.push(shortDate(d)); }
-  const mk = (area, title, cls, dash, m) => {
-    const pts = days.map((d) => L.painDaily(S, d, area));
-    const have = pts.filter((v) => v != null);
-    const sum = have.length ? `Logged on ${have.length} of 7 days; latest ${have[have.length - 1]} out of 10, highest ${Math.max(...have)}.` : "No scores logged in the last 7 days.";
-    return lineChart({ title, labels, yMin: 0, yMax: 10, yLabel: "0–10", summary: sum, series: [{ name: title, cls, dash, marker: m, points: pts }] });
-  };
-  return mk("elbow", "Right elbow/forearm pain (daily max)", "s1", false, "circle") + mk("neck", "Neck/trap pain (daily max)", "s2", true, "square");
+function painTrend(S, ui) {
+  const days = [];
+  for (let i = 13; i >= 0; i--) days.push(L.addDays(ui.date, -i));
+  const st = days.map((d) => L.painDay(S, d));
+  const n = (k) => st.filter((v) => v === k).length;
+  const word = { pain: "Pain logged", none: "No pain logged" };
+  const cells = days.map((d, i) => `<li class="pcell p-${st[i] || "off"}" aria-label="${shortDate(d)}: ${word[st[i]] || "Nothing logged"}"><span class="pdot" aria-hidden="true">${st[i] === "pain" ? "●" : st[i] === "none" ? "✓" : "·"}</span><span class="small muted">${shortDate(d).replace(/^\S+\s/, "")}</span></li>`).join("");
+  return `<ul class="pstrip" aria-label="Pain log, last 14 days">${cells}</ul>
+    <p class="small" role="status">Last 14 days: pain logged on <strong>${n("pain")}</strong>, no pain on <strong>${n("none")}</strong>, nothing logged on ${n(null)}.</p>`;
 }
 
 export function recovery(S, ui) {
   const date = ui.date, tod = ui.painTod, rows = L.painRows(S, date, tod);
-  const skipped = rows.some((r) => r.skipped), allNone = rows.length && rows.every((r) => r.redFlags?.includes("none") && r.severity === 0);
-  const areas = ui.painAreas;
-  const first = rows.find((r) => !r.skipped) || {};
-  const areaOpts = [["elbow", "Right elbow/forearm", ["elbow"]], ["neck", "Neck/trap", ["neck"]], ["both", "Both", ["elbow", "neck"]], ["none", "None", []]];
-  const areaKey = areas.length === 2 ? "both" : areas.length === 1 ? areas[0] : "none";
-  const chipRow = (label, key, list, cur) => `<h3>${label}</h3><div class="chips" role="group" aria-label="${label}">${list.map((v) => btn(v, { a: "pain", k: key, v }, { on: cur === v })).join("")}</div>`;
-  const form = skipped ? `<p class="muted">Skipped — no score recorded. Tap any score below to log one instead.</p>` : "";
-  const sevRows = areas.map((a) => {
-    const r = rows.find((x) => x.area === a), name = L.PAIN.areas.find((x) => x.id === a).label;
-    return `<h3>${name} severity (0–10)</h3><div class="chips sev" role="group" aria-label="${name} severity">${Array.from({ length: 11 }, (_, n) => btn(n, { a: "sev", area: a, v: n }, { on: r?.severity === n, aria: `${name} pain ${n} out of 10` })).join("")}</div>`;
-  }).join("");
-  const adviceAll = L.painAdvice(L.painRows(S, date));
+  const skipped = rows.some((r) => r.skipped), row = rows.find((r) => !r.skipped) || {};
+  const cur = L.rowPain(row);
   const stages = L.YOGA_STAGES.map((s) => {
     const st = L.getDay(S, date).yogaStages?.[s.id]?.status || "none";
     return `<li>${btn(`<span class="glyph s-${st}" aria-hidden="true">${GLYPH[st]}</span><span style="flex:1">${esc(s.label)} — ${s.minutes} min</span><span class="state s-${st}">${STATE_TEXT[st]}</span>`, { a: "stage", id: s.id }, { cls: "item", long: true, aria: `${s.label}, ${s.minutes} minutes: ${STATE_TEXT[st]}` })}</li>`;
   }).join("");
   const y = ui.yoga;
-  return `${adviceAll ? `<div class="alert ${adviceAll.level === "red" ? "red" : ""}" role="alert"><strong>${adviceAll.level === "red" ? "⚠ Get assessed" : "Note"}:</strong> ${esc(adviceAll.text)}</div>` : ""}
-  <section class="card"><h2>Symptom check-in</h2>
+  return `<section class="card"><h2>Pain check-in</h2>
     <div class="chips" role="group" aria-label="When">${L.PAIN.times.map((t) => btn(t.label, { a: "ptod", v: t.id }, { on: tod === t.id })).join("")}</div>
-    <h3>Area</h3><div class="chips" role="group" aria-label="Area">${areaOpts.map(([id, l, v]) => btn(l, { a: "parea", v: id }, { on: areaKey === id })).join("")}</div>
-    ${form}${areaKey === "none" ? (allNone ? `<p>Logged: no symptoms.</p>` : `<p class="muted">Tap “None” again after choosing to record no symptoms.</p>`) : sevRows}
-    ${areaKey !== "none" ? chipRow("Quality", "quality", L.PAIN.qualities, first.quality) + chipRow("Trigger", "trigger", L.PAIN.triggers, first.trigger) + chipRow("Compared with yesterday", "trend", L.PAIN.trends, first.trend) + `<h3>Warning signs</h3><div class="chips" role="group" aria-label="Warning signs">${L.PAIN.redFlags.map((f) => btn(f.label, { a: "flag", v: f.id }, { on: first.redFlags?.includes(f.id) })).join("")}${btn("None", { a: "flag", v: "none" }, { on: first.redFlags?.includes("none") })}</div>` : ""}
+    ${skipped ? `<p class="muted">Skipped. Tap below to log instead.</p>` : ""}
+    <div class="grid-btns" style="--n:2;margin-top:10px">${btn("No pain", { a: "pain", v: "no" }, { on: cur === false })}${btn("Pain", { a: "pain", v: "yes" }, { on: cur === true })}</div>
+    <label class="field" style="margin-top:10px">Note<textarea id="pnote" data-c="pnote" rows="3" maxlength="500" placeholder="Optional: where, what you were doing…">${esc(row.note || "")}</textarea></label>
     <div class="row" style="margin-top:12px">${btn(skipped ? "Skipped ✓" : "Skip this check-in", { a: "pskip" }, { on: skipped })}${rows.length ? btn("Clear entry", { a: "pclear" }) : ""}</div>
-    <p class="muted small">Logging helps you spot patterns; it is not a diagnosis or clearance. If deep pain at the front of the elbow with palm-up bending returns or worsens, stop that lift and get it assessed (it can involve the distal biceps tendon). Electric or locking neck symptoms also warrant assessment.</p></section>
-  <section class="card"><h2>7-day trend</h2>${trendCharts(S, ui)}<p class="muted small">Use this to guide your own review (and a clinician's if you see one).</p></section>
+    <p class="muted small">Logging helps you spot patterns; it is not a diagnosis. If deep pain at the front of the elbow with palm-up bending returns or worsens, stop that lift and get it assessed.</p></section>
+  <section class="card"><h2>Pain trend</h2>${painTrend(S, ui)}<p class="muted small">Only whether pain was logged each day, not how much.</p></section>
   <section class="card"><h2>Evening yoga + meditation · 12 min</h2>
     ${y ? yogaRunner(ui) : `<div class="row">${btn("▶ Start 12-minute routine", { a: "yogastart" }, { cls: "primary" })}</div>`}
     <ul class="checklist" style="margin-top:10px">${stages}</ul>
@@ -330,14 +318,13 @@ function reviewCard(S, ui) {
   const wk = L.weekStartOf(ui.date), end = L.addDays(wk, 6), r = S.weeklyReviews[wk] || {};
   const pts = L.weightPoints(S, wk, end);
   const avgW = pts.length ? pts.reduce((a, p) => a + p.lb, 0) / pts.length : null;
-  let dl = 0, cal = 0, pro = 0, ep = [], np = [];
+  let dl = 0, cal = 0, pro = 0, painDays = 0, painLoggedDays = 0;
   for (let d = wk; d <= end; d = L.addDays(d, 1)) {
     const t = L.mealTotals(S, d), logged = Object.keys(L.getDay(S, d).meals || {}).length;
     if (logged) { dl++; cal += t.calories; pro += t.protein; }
-    const e = L.painDaily(S, d, "elbow"), n = L.painDaily(S, d, "neck"); if (e != null) ep.push(e); if (n != null) np.push(n);
+    const pd = L.painDay(S, d); if (pd) painLoggedDays++; if (pd === "pain") painDays++;
   }
   const ad = L.adherence(S, wk, end, L.ymd()), adv = L.calorieAdvice(S, ui.date);
-  const avg = (a) => (a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : "—");
   const prevWaist = Object.keys(S.weeklyReviews).sort().map((k) => S.weeklyReviews[k].waistIn).filter((v) => typeof v === "number").pop();
   const waist = ui.waistDraft ?? r.waistIn ?? prevWaist ?? 32;
   const chk = (k, label) => btn(label, { a: "rv", k }, { on: !!r[k] });
@@ -345,7 +332,7 @@ function reviewCard(S, ui) {
     <ul class="small" style="padding-left:18px"><li>Average weight: <strong>${avgW ? avgW.toFixed(1) + " lb" : "no weigh-ins"}</strong> (${pts.length} reading${pts.length === 1 ? "" : "s"})</li>
     <li>Nutrition: ${dl ? `${dl} day(s) logged, avg ${nf(cal / dl)} kcal (${Math.round((100 * cal) / dl / S.profile.calorieTarget)}% of target), ${nf(pro / dl)} g protein` : "no meals logged"}</li>
     <li>Training: ${ad.scheduled ? `${ad.completed} of ${ad.scheduled} scheduled workouts done` : "no scheduled workouts elapsed yet"}</li>
-    <li>Symptoms (avg of daily max, 0–10): elbow ${avg(ep)}, neck ${avg(np)}</li></ul>
+    <li>Pain: logged on <strong>${painDays}</strong> of ${painLoggedDays} checked-in day${painLoggedDays === 1 ? "" : "s"}</li></ul>
     <div class="alert ${adv.action === "wait" || adv.action === "keep" ? "info" : ""}"><strong>Calorie guide:</strong> ${esc(adv.text)}${adv.waistUp ? " Waist measurement went up since last review." : ""}<div class="muted small">Suggestion only — you choose below. Starting calories were an estimate.</div></div>
     <div class="stack">${chk("rvWeight", "Reviewed weekly average weight")}${chk("rvNutrition", "Reviewed nutrition adherence")}${chk("rvTraining", "Reviewed training completion")}${chk("rvSymptoms", "Reviewed elbow and neck symptom trend")}</div>
     <h3>Next-week calorie target</h3><div class="chips" role="group" aria-label="Calorie adjustment">${L.REVIEW_CALORIE_OPTIONS.map((o) => btn(o === "Keep" ? o : `${o} kcal/day`, { a: "rvpick", k: "calorieAdjustment", v: o }, { on: r.calorieAdjustment === o })).join("")}</div>
@@ -378,7 +365,7 @@ export function progressView(S, ui) {
   return `<section class="card"><h2>Weight</h2>${weightChart}<p class="muted small">A missed milestone isn't a failure — day-to-day weight swings by 1–2 lb. Watch the average.</p></section>
     <section class="card"><h2>Food</h2>${calChart}${proChart}</section>
     <section class="card"><h2>Training</h2>${adhChart}</section>
-    <section class="card"><h2>Symptoms</h2>${trendCharts(S, ui)}</section>
+    <section class="card"><h2>Pain trend</h2>${painTrend(S, ui)}</section>
     ${reviewCard(S, ui)}`;
 }
 
@@ -420,6 +407,7 @@ export function settings(S, ui) {
     <div class="row"><span>Notifications: <strong>${perm}</strong></span>${perm === "default" ? btn("Enable notifications", { a: "notifyperm" }) : ""}</div>${reminders}</section>
   <section class="card"><h2>Your data</h2><p class="muted small">Stored only on this device (offline-first). Export a backup occasionally — clearing site data deletes it.</p>
     <div class="row">${btn("Export JSON", { a: "exportjson" })}${btn("Export CSV", { a: "exportcsv" })}<label class="row"><span class="small muted">Import JSON</span><input type="file" accept="application/json,.json" data-c="import"></label></div>
-    <div class="row" style="margin-top:8px">${btn(`Delete ${dateLabel(ui.date)}`, { a: "delday" }, { cls: "danger" })}${btn("Delete ALL data", { a: "delall" }, { cls: "danger" })}</div></section>
+    <div class="row" style="margin-top:8px">${btn(`Delete ${dateLabel(ui.date)}`, { a: "delday" }, { cls: "danger" })}${btn("Delete ALL data", { a: "delall" }, { cls: "danger" })}</div>
+    <div class="row" style="margin-top:8px">${btn("Restart from today", { a: "restart" })}</div><p class="muted small">Restart clears everything logged and sets today as day one, keeping your meals, reminders and settings. You can undo it right after.</p></section>
   <p class="muted small" style="padding:0 4px">Medical note: this tracker supports routines and symptom awareness, not diagnosis or treatment. Seek clinical assessment for persistent deep anterior elbow pain and recurrent electric/locking neck symptoms, especially before loading the elbow or returning to golf.</p>`;
 }

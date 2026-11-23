@@ -82,26 +82,51 @@ test("workout checklist item only appears on loaded days", () => {
 
 
 
-test("a single severity tap logs a pain row with no other input", () => {
+test("one tap logs pain / no pain; the trend is only whether pain was logged", () => {
   const st = fresh();
-  run(st, (s) => A.painSet(s, MON, "morning", ["elbow"], { severity: 4 }));
-  assert.equal(L.painDaily(st.state, MON, "elbow"), 4);
-  assert.equal(L.painDaily(st.state, MON, "neck"), null);
+  assert.equal(L.painDay(st.state, MON), null);
+  run(st, (s) => A.painLog(s, MON, "morning", { pain: false }));
+  assert.equal(L.painDay(st.state, MON), "none");
+  run(st, (s) => A.painLog(s, MON, "evening", { pain: true }));
+  assert.equal(L.painDay(st.state, MON), "pain");
+  run(st, (s) => A.painLog(s, MON, "evening", { pain: null })); // toggled off, no note: row removed
+  assert.equal(L.painDay(st.state, MON), "none");
+  assert.equal(L.painRows(st.state, MON).length, 1);
 });
 
-test("pain skip doesn't coerce a score; later tap replaces the skip", () => {
+test("a note is stored per check-in; a note alone doesn't count as pain or no pain", () => {
+  const st = fresh();
+  run(st, (s) => A.painLog(s, MON, "after", { note: "tight after rows" }));
+  assert.equal(L.painDay(st.state, MON), null);
+  assert.equal(L.derivedStatus(st.state, MON, item("pain-am")), null); // morning not logged
+  assert.deepEqual(L.painNotes(st.state, MON), ["After activity: tight after rows"]);
+  run(st, (s) => A.painLog(s, MON, "after", { pain: true }));
+  assert.equal(L.painRows(st.state, MON).length, 1);
+  assert.equal(L.painRows(st.state, MON)[0].note, "tight after rows");
+  assert.match(L.workoutExport(st.state, MON).text + "", /^/); // export doesn't throw
+});
+
+test("pain skip doesn't count as logged; a later log replaces the skip; old severity rows still read", () => {
   const st = fresh();
   run(st, (s) => A.painSkip(s, MON, "morning"));
-  assert.equal(L.painDaily(st.state, MON, "elbow"), null);
+  assert.equal(L.painDay(st.state, MON), null);
   assert.equal(L.derivedStatus(st.state, MON, item("pain-am")), "skipped");
-  run(st, (s) => A.painSet(s, MON, "morning", ["elbow"], { severity: 2 }));
+  run(st, (s) => A.painLog(s, MON, "morning", { pain: false }));
   assert.equal(L.painRows(st.state, MON, "morning").length, 1);
+  assert.equal(L.derivedStatus(st.state, MON, item("pain-am")), "done");
+  run(st, (s) => s.pain.push({ id: "old", date: TUE, tod: "morning", area: "elbow", severity: 4, skipped: false }, { id: "old2", date: WED, tod: "morning", area: "elbow", severity: 0, skipped: false }));
+  assert.deepEqual([L.painDay(st.state, TUE), L.painDay(st.state, WED)], ["pain", "none"]);
 });
 
-test("red flags produce advice, never a diagnosis", () => {
+test("restart from today clears logs, keeps meals and settings, and undo brings it back", () => {
   const st = fresh();
-  run(st, (s) => A.painSet(s, MON, "morning", ["elbow"], { severity: 6, redFlags: ["pop"] }));
-  assert.equal(L.painAdvice(L.painRows(st.state, MON)).level, "red");
+  run(st, (s) => { A.saveMeal(s, MON, "lunch", { name: "Chili", calories: 700, protein: 45 }); A.painLog(s, MON, "morning", { pain: true }); A.setWeight(s, MON, 160); s.profile.calorieTarget = 3000; });
+  run(st, (s) => A.restartToday(s));
+  assert.deepEqual(st.state.days, {}); assert.equal(st.state.pain.length, 0);
+  assert.equal(st.state.profile.startDate, L.ymd()); assert.equal(st.state.profile.calorieTarget, 3000);
+  assert.ok(st.state.mealPresets.some((p) => p.label === "Chili"));
+  st.undo();
+  assert.equal(L.painDay(st.state, MON), "pain");
 });
 
 test("a skipped reminder fabricates no completion", () => {
@@ -275,8 +300,8 @@ test("set wave on gym legs: +0/+1/+2 then deload; rehab items fixed; upper ramps
   assert.equal(sets(L.addDays(TUE, 14), "a-heel"), 2);
   assert.equal(L.waveInfo(st.state, wk(3)).deload, true);
   assert.equal(L.waveInfo(st.state, wk(4)).reps, "10–12");
-  assert.deepEqual([0, 1, 2, 3].map((n) => sets(wk(n), "u-row")), [3, 4, 4, 3]);
-  assert.ok(L.exercisesForDate(st.state, wk(2)).filter((e) => e.upper).every((e) => !e.isDensity && e.sets <= L.UPPER_BODY.find((u) => u.id === e.id).sets + 1));
+  assert.deepEqual([0, 1, 2, 3].map((n) => sets(wk(n), "u-row")), [3, 3, 3, 3]); // upper body has no ramp
+  assert.ok(L.exercisesForDate(st.state, wk(2)).filter((e) => e.upper).every((e) => !e.isDensity && e.sets === L.UPPER_BODY.find((u) => u.id === e.id).sets));
 });
 
 test("no curls or chin-ups; gym upper split across A/B; home days use bodyweight + pull-up bar only", () => {
@@ -373,13 +398,13 @@ test("workout export: text and CSV reflect sets, loads and status; empty day rep
   const st = fresh();
   assert.equal(L.workoutExport(st.state, MON).hasData, false);
   const exs = L.exercisesForDate(st.state, MON);
-  run(st, (s) => { A.setSet(s, MON, exs[0].id, 0, "done"); A.setSet(s, MON, exs[0].id, 1, "skipped"); A.setLoad(s, MON, exs[0].id, 135); A.painSet(s, MON, "after", ["elbow"], { severity: 2 }); });
+  run(st, (s) => { A.setSet(s, MON, exs[0].id, 0, "done"); A.setSet(s, MON, exs[0].id, 1, "skipped"); A.setLoad(s, MON, exs[0].id, 135); A.painLog(s, MON, "after", { pain: true }); });
   const x = L.workoutExport(st.state, MON);
   assert.equal(x.hasData, true);
   assert.match(x.text, /Gym: Workout A/);
   assert.match(x.text, /@ 135 lb/);
   assert.match(x.text, /1:done {2}2:skipped {2}3:—/);
-  assert.match(x.text, /Right elbow\/forearm 2\/10 \(after activity\)/);
+  assert.match(x.text, /Pain: yes/);
   assert.match(x.text, /Sets done: 1\/\d+/);
   const lines = x.csv.split("\n");
   assert.equal(lines[0], "date,routine,exercise_id,exercise,set,status,load_lb,logged_at");
@@ -444,7 +469,7 @@ test("gym days ignore walks; walk shows in the export", () => {
 test("every screen renders without throwing, on every kind of day, in both workout views", async () => {
   const V = await import("../public/tracker/views.js");
   const st = fresh();
-  run(st, (s) => { A.setMeal(s, MON, "lunch", 1); A.setWeight(s, MON, 159.5); A.setLoad(s, MON, "g-squat", 135); A.setWalk(s, L.addDays(MON, 5), 30); A.painSet(s, MON, "morning", ["elbow"], { severity: 3, redFlags: ["pop"] }); });
+  run(st, (s) => { A.setMeal(s, MON, "lunch", 1); A.setWeight(s, MON, 159.5); A.setLoad(s, MON, "g-squat", 135); A.setWalk(s, L.addDays(MON, 5), 30); A.painLog(s, MON, "morning", { pain: true, note: "tight" }); });
   const exsMon = L.exercisesForDate(st.state, MON);
   run(st, (s) => A.setSet(s, MON, exsMon[0].id, 0, "done"));
   const base = { tab: "today", date: MON, painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, rest: null, restLen: 60, yoga: null, banners: [], guided: true };

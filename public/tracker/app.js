@@ -8,7 +8,7 @@ import { startScheduler, snooze, skipToday, notify, askPermission } from "./remi
 
 const store = createStore();
 const $ = (s) => document.querySelector(s);
-const ui = { tab: "today", date: L.ymd(), painTod: "morning", painAreas: ["elbow"], weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, customKcal: 200, customProtein: 10, rest: null, restLen: 60, autoRest: true, yoga: null, banners: [] };
+const ui = { tab: "today", date: L.ymd(), painTod: "morning", weightDraft: null, waistDraft: null, loadDraft: {}, prevPct: {}, popFk: null, prevG: null, guided: true, prevCele: {}, customKcal: 200, customProtein: 10, rest: null, restLen: 60, autoRest: true, yoga: null, banners: [] };
 try { const t = localStorage.getItem("gain-tracker-ui"); if (t) Object.assign(ui, JSON.parse(t)); } catch {}
 // Older saves used restLen 0 for "off": translate that, and keep the length in sane 15 s steps.
 if (ui.restLen === 0) { ui.autoRest = false; ui.restLen = 60; }
@@ -243,7 +243,6 @@ const goTab = (tab) => { ui.tab = tab; saveUi(); render(); window.scrollTo(0, 0)
 const setDate = (d) => { ui.date = d; ui.weightDraft = null; ui.waistDraft = null; ui.loadDraft = {}; render(); };
 const wBase = () => ui.weightDraft ?? L.getDay(S(), ui.date).weight?.lb ?? V.lastWeight(S(), ui.date);
 const round1 = (n) => Math.round(n * 10) / 10;
-const areasOfCheckin = () => (ui.painAreas.length ? ui.painAreas : ["elbow"]);
 const tabForCategory = { meal: "today", weighin: "today", workout: "workout", evening: "recovery" };
 const stateName = (s) => L.CHECK_STATUSES.find((x) => x.id === s)?.label || s;
 
@@ -351,23 +350,9 @@ const handlers = {
 
   // pain
   ptod: (d) => { ui.painTod = d.v; render(); },
-  parea(d) {
-    if (d.v === "none") { ui.painAreas = []; return act((s) => A.painNone(s, ui.date, ui.painTod), "No symptoms logged"); }
-    ui.painAreas = d.v === "both" ? ["elbow", "neck"] : [d.v];
-    render();
-  },
-  sev(d) {
-    const cur = L.painRows(S(), ui.date, ui.painTod).find((r) => r.area === d.area)?.severity;
-    act((s) => A.painSet(s, ui.date, ui.painTod, [d.area], { severity: cur === +d.v ? null : +d.v }), `${L.PAIN.areas.find((a) => a.id === d.area).label}: ${cur === +d.v ? "cleared" : d.v + "/10"}`);
-  },
   pain(d) {
-    const cur = L.painRows(S(), ui.date, ui.painTod).find((r) => !r.skipped)?.[d.k];
-    act((s) => A.painSet(s, ui.date, ui.painTod, areasOfCheckin(), { [d.k]: cur === d.v ? null : d.v }), `${d.k}: ${d.v}`);
-  },
-  flag(d) {
-    const cur = L.painRows(S(), ui.date, ui.painTod).find((r) => !r.skipped)?.redFlags || [];
-    let next = cur.includes(d.v) ? cur.filter((f) => f !== d.v) : d.v === "none" ? ["none"] : [...cur.filter((f) => f !== "none"), d.v];
-    act((s) => A.painSet(s, ui.date, ui.painTod, areasOfCheckin(), { redFlags: next }), "Warning signs updated");
+    const cur = L.rowPain(L.painRows(S(), ui.date, ui.painTod).find((r) => !r.skipped) || {}), v = d.v === "yes", next = cur === v ? null : v;
+    act((s) => A.painLog(s, ui.date, ui.painTod, { pain: next }), next === null ? "Pain entry cleared" : v ? "Pain logged" : "No pain logged");
   },
   pskip: () => act((s) => (L.painRows(S(), ui.date, ui.painTod).some((r) => r.skipped) ? A.painClear(s, ui.date, ui.painTod) : A.painSkip(s, ui.date, ui.painTod)), "Check-in skipped"),
   pclear: () => act((s) => A.painClear(s, ui.date, ui.painTod), "Entry cleared"),
@@ -423,6 +408,9 @@ const handlers = {
   delday() {
     showMenu(`Delete everything logged on ${ui.date}?`, [{ label: "Delete this day", cls: "danger", fn: () => { closeMenu(); act((s) => A.deleteDay(s, ui.date), "Day deleted"); } }]);
   },
+  restart() {
+    showMenu("Restart from today? This clears everything logged and makes today day one. Your meals, reminders and settings stay. (Export first if you want a copy; Undo works right after.)", [{ label: "Restart from today", cls: "danger", fn: () => { closeMenu(); ui.date = L.ymd(); act((s) => A.restartToday(s), "Restarted from today"); } }]);
+  },
   delall() {
     showMenu("Delete ALL tracker data on this device? This can't be undone (export first).", [{ label: "Delete everything", cls: "danger", fn: () => { closeMenu(); store.resetAll(); ui.date = L.ymd(); toast("All data deleted", false); render(); } }]);
   },
@@ -455,6 +443,7 @@ document.addEventListener("change", async (e) => {
   const d = t.dataset;
   switch (d.c) {
     case "date": if (t.value) setDate(t.value); break;
+    case "pnote": act((s) => A.painLog(s, ui.date, ui.painTod, { note: t.value.trim() }), "Note saved"); break;
     case "start": if (t.value) act((s) => { s.profile.startDate = t.value; }, "Start date updated"); break;
     case "swap": act((s) => A.swapMeal(s, ui.date, d.slot, t.value), "Meal swapped"); break;
     case "rtime": if (t.value) act((s) => { s.reminders.find((r) => r.id === d.id).time = t.value; }, "Reminder time"); else render(); break;
@@ -488,12 +477,12 @@ function download(name, text, type) {
 const csvCell = (v) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export function toCsv(state) {
   const dates = [...new Set([...Object.keys(state.days), ...state.pain.map((r) => r.date)])].sort();
-  const head = ["date", "timezone", "weight_lb", "calories", "protein_g", "meals_logged", "workout_status", "sleep_band", "yoga_stages_done", "meditation_done", "water_checks", "elbow_pain_max", "neck_pain_max", "loads_lb"];
+  const head = ["date", "timezone", "weight_lb", "calories", "protein_g", "meals_logged", "workout_status", "sleep_band", "yoga_stages_done", "meditation_done", "water_checks", "pain", "pain_notes", "loads_lb"];
   const rows = dates.map((d) => {
     const day = L.getDay(state, d), t = L.mealTotals(state, d);
     return [d, day.tz, day.weight?.lb, t.calories, t.protein, Object.keys(day.meals || {}).length, L.workoutStatus(state, d),
       day.sleepBand, Object.values(day.yogaStages || {}).filter((s) => s.status === "done").length, day.meditationDone ? 1 : 0,
-      Object.keys(day.hydrationChecks || {}).length, L.painDaily(state, d, "elbow"), L.painDaily(state, d, "neck"), Object.entries(day.loads || {}).map(([k, v]) => `${k}:${v.lb}`).join(";")].map(csvCell).join(",");
+      Object.keys(day.hydrationChecks || {}).length, L.painDay(state, d) || "", L.painNotes(state, d).join(" | "), Object.entries(day.loads || {}).map(([k, v]) => `${k}:${v.lb}`).join(";")].map(csvCell).join(",");
   });
   return [head.join(","), ...rows].join("\n");
 }

@@ -150,10 +150,15 @@ as its own PWA.
   slot's "Your meals" list (same name updates the entry) for one-tap reuse, and the
   portion chips scale them. The starter estimates stay available but collapsed.
   No food database or network calls are used.
+- **Pain check-in**: tap No pain or Pain (morning/evening/before/after) and add an
+  optional note. The trend is only whether pain was logged each day (last 14 days);
+  there are no severity scores. Older severity entries still show as pain/no pain.
+- **Restart from today** (Settings): clears everything logged, makes today day one,
+  keeps your meals, reminders and settings; Undo works right after.
 - **Training layout**: three full-body gym days (Mon/Wed/Fri: A, B, A) and
   two home days (Tue/Thu: bodyweight + pull-up bar); Saturday can be made a
-  third home day from the routine picker. Sets follow a 4-week wave with a
-  leg-only density block in week 3. No curls or underhand pulling; pull-ups
+  third home day from the routine picker. Leg sets follow a 4-week wave with a
+  leg-only density block in week 3; upper-body sets have no ramp (base sets every week). No curls or underhand pulling; pull-ups
   are a hang → scapular → band-assisted → full ladder you step up with the
   Progress button.
 - Logic is in `public/tracker/logic.js` / `store.js` (pure, tested):

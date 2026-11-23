@@ -300,21 +300,9 @@ export const YOGA_STAGES = [
 ];
 
 export const PAIN = {
-  areas: [
-    { id: "elbow", label: "Right elbow/forearm" },
-    { id: "neck", label: "Neck/trap" },
-  ],
   times: [
     { id: "morning", label: "Morning" }, { id: "evening", label: "Evening" },
     { id: "before", label: "Before activity" }, { id: "after", label: "After activity" },
-  ],
-  qualities: ["None", "Ache", "Sharp", "Electric", "Tight", "Other"],
-  triggers: ["Palm-up elbow bend", "Grip", "Forearm rotation", "Neck turn", "Shoulder motion", "Golf", "None"],
-  trends: ["Better", "Same", "Worse"],
-  redFlags: [
-    { id: "bruising", label: "Bruising" }, { id: "pop", label: "Pop" },
-    { id: "deformity", label: "Visible deformity" }, { id: "weakness", label: "Weakness" },
-    { id: "numbness", label: "Numbness/tingling" },
   ],
 };
 
@@ -442,11 +430,10 @@ export function scheduleLabel(state, date) {
 export const isLoadedRoutine = (r) => r === "A" || r === "B" || r === "H1" || r === "H2";
 
 // Four-week wave borrowed from the strength plan: add sets for three weeks,
-// then deload back to the base. Upper body ramps more gently than legs. The wave
-// follows the calendar from the start date, so it is only a set-count suggestion
-// and never unlocks anything.
+// then deload back to the base. Legs only: upper-body work (the injured arm/neck
+// area) has no ramp and keeps its base sets every week. The wave follows the
+// calendar from the start date, so it is only a set-count suggestion and never unlocks anything.
 export const WAVE_LOWER = [0, 1, 2, 0];
-export const WAVE_UPPER = [0, 1, 1, 0];
 export const BLOCK_REPS = ["12–15", "10–12", "8–10", "8–10"];
 export function waveInfo(state, date) {
   const weeks = Math.max(0, Math.floor(diffDays(date, state.profile.startDate) / 7));
@@ -463,10 +450,9 @@ export function waveInfo(state, date) {
 export const DENSITY_SETS = 8;
 export const isDensityWeek = (state, date) => waveInfo(state, date).weekInBlock === 2;
 export function setsFor(state, date, e) {
-  if (e.noRamp) return e.sets;
+  if (e.noRamp || e.upper) return e.sets;
   if (e.density && isDensityWeek(state, date)) return DENSITY_SETS;
-  const wave = e.upper ? WAVE_UPPER : WAVE_LOWER;
-  return e.sets + wave[waveInfo(state, date).weekInBlock];
+  return e.sets + WAVE_LOWER[waveInfo(state, date).weekInBlock];
 }
 // Push ladder starts at standard push-ups (you bench anyway); pull ladder starts at
 // dead hangs because pull-ups are the loaded elbow-flexor movement.
@@ -619,22 +605,14 @@ export function milestoneAt(state, date) {
 export function painRows(state, date, tod) {
   return state.pain.filter((r) => r.date === date && (!tod || r.tod === tod));
 }
-export function painDaily(state, date, area) {
-  const vals = painRows(state, date).filter((r) => r.area === area && typeof r.severity === "number").map((r) => r.severity);
-  return vals.length ? Math.max(...vals) : null;
+// A row is one check-in: { pain: true | false | null, note, skipped }. Older rows (area/severity) still read: severity > 0 = pain.
+export const rowPain = (r) => (r.skipped ? null : typeof r.pain === "boolean" ? r.pain : typeof r.severity === "number" ? r.severity > 0 : null);
+// The trend is only whether pain was logged: "pain", "none" (logged, no pain) or null (nothing logged).
+export function painDay(state, date) {
+  const v = painRows(state, date).map(rowPain).filter((x) => x !== null);
+  return v.length ? (v.some(Boolean) ? "pain" : "none") : null;
 }
-export function activeRedFlags(rows) {
-  const s = new Set();
-  for (const r of rows) for (const f of r.redFlags || []) if (f !== "none") s.add(f);
-  return [...s];
-}
-export function painAdvice(rows) {
-  const flags = activeRedFlags(rows);
-  if (flags.length) return { level: "red", text: "You flagged a warning sign. This tracker can't diagnose — please get a prompt clinical assessment (a pop, bruising, visible biceps deformity, marked weakness turning the palm up, or worsening numbness/weakness warrants prompt evaluation; progressive neurological weakness is urgent)." };
-  const neckElectric = rows.some((r) => (r.area === "neck") && r.quality === "Electric");
-  if (neckElectric) return { level: "amber", text: "Electric or locking neck symptoms warrant a clinical assessment, especially if recurrent." };
-  return null;
-}
+export const painNotes = (state, date) => painRows(state, date).filter((r) => !r.skipped && r.note).map((r) => `${PAIN.times.find((t) => t.id === r.tod)?.label || r.tod}: ${r.note}`);
 
 // ---------- Checklist status ----------
 
@@ -773,8 +751,8 @@ export function workoutExport(state, date) {
   }
   const rd = day.readiness ? READINESS.filter((r) => day.readiness[r.id]).map((r) => r.label) : [];
   if (rd.length) lines.push("", `Pre-session check ticked: ${rd.join("; ")}`);
-  const pain = painRows(state, date).filter((r) => !r.skipped && typeof r.severity === "number");
-  if (pain.length) lines.push("", "Symptoms: " + pain.map((r) => `${PAIN.areas.find((a) => a.id === r.area)?.label} ${r.severity}/10 (${PAIN.times.find((t) => t.id === r.tod)?.label.toLowerCase()})`).join(", "));
+  const pd = painDay(state, date), pn = painNotes(state, date);
+  if (pd) lines.push("", `Pain: ${pd === "pain" ? "yes" : "no"}${pn.length ? ` (${pn.join("; ")})` : ""}`);
   const q = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const csv = [["date", "routine", "exercise_id", "exercise", "set", "status", "load_lb", "logged_at"].join(","), ...rows.map((r) => r.map(q).join(","))].join("\n");
   return { text: lines.join("\n"), csv, hasData: prog.logged > 0 || walkMinutes(state, date) > 0 || exs.some((e) => day.loads?.[e.id]) };

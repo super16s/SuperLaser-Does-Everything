@@ -312,3 +312,12 @@ button.block { display: block; width: 100%; margin-top: 12px; min-height: 52px; 
 @keyframes fistbob { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
 @keyframes fintext { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .finale { display: none; } }
+
+/* pain trend: one cell per day, logged-or-not only */
+.pstrip { list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.pcell { display: flex; flex-direction: column; align-items: center; padding: 6px 0; border-radius: 12px; background: var(--card-2, rgba(128, 128, 128, .1)); }
+.pcell .pdot { font-size: 1.1rem; line-height: 1.2; }
+.pcell.p-pain { background: color-mix(in srgb, #d9433b 20%, transparent); color: #b3261e; }
+.pcell.p-none { background: color-mix(in srgb, #3fbf94 22%, transparent); color: #1f7a5a; }
+.pcell.p-off .pdot { opacity: .4; }
+label.field textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; font: inherit; padding: 10px 12px; border-radius: 12px; resize: vertical; }

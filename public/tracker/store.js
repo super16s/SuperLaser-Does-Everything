@@ -230,29 +230,18 @@ export const actions = {
     prune(s, date);
   },
 
-  // Pain: rows are upserted per (date, time-of-day, area) so a single tap logs.
-  painSet(s, date, tod, areas, patch) {
-    s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod && r.skipped));
-    for (const area of areas) {
-      let row = s.pain.find((r) => r.date === date && r.tod === tod && r.area === area);
-      if (!row) {
-        row = { id: `${date}|${tod}|${area}`, date, tod, area, severity: null, quality: null, trigger: null, trend: null, redFlags: [], skipped: false, ...stamp() };
-        s.pain.push(row);
-      }
-      Object.assign(row, patch, { skipped: false }, stamp());
-    }
-    // Shared descriptors apply to every row of this check-in.
-    const shared = {};
-    for (const k of ["quality", "trigger", "trend", "redFlags"]) if (k in patch) shared[k] = patch[k];
-    if (Object.keys(shared).length) for (const r of s.pain) if (r.date === date && r.tod === tod) Object.assign(r, shared);
-  },
-  painNone(s, date, tod) {
-    s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod));
-    for (const area of PAIN.areas) s.pain.push({ id: `${date}|${tod}|${area.id}`, date, tod, area: area.id, severity: 0, quality: "None", trigger: "None", trend: null, redFlags: ["none"], skipped: false, ...stamp() });
+  // Pain: one row per (date, time-of-day) holding "pain or not" and a free-text note. An empty row is removed.
+  painLog(s, date, tod, patch) {
+    const id = `${date}|${tod}`;
+    let row = s.pain.find((r) => r.id === id && !r.skipped);
+    s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod && r.id !== id)); // replaces skips and older severity rows
+    if (!row) { row = { id, date, tod, pain: null, note: "", skipped: false, ...stamp() }; s.pain.push(row); }
+    Object.assign(row, patch, stamp());
+    if (row.pain === null && !row.note) s.pain = s.pain.filter((r) => r !== row);
   },
   painSkip(s, date, tod) {
     s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod));
-    s.pain.push({ id: `${date}|${tod}|skip`, date, tod, area: null, severity: null, quality: null, trigger: null, trend: null, redFlags: [], skipped: true, ...stamp() });
+    s.pain.push({ id: `${date}|${tod}|skip`, date, tod, pain: null, note: "", skipped: true, ...stamp() });
   },
   painClear(s, date, tod) { s.pain = s.pain.filter((r) => !(r.date === date && r.tod === tod)); },
 
@@ -328,6 +317,9 @@ export const actions = {
     if (l[item]) delete l[item]; else l[item] = true;
   },
   setReview(s, weekStart, patch) { s.weeklyReviews[weekStart] = { ...(s.weeklyReviews[weekStart] || {}), ...patch, ...stamp() }; },
+  // Fresh start from today: clears everything logged (days, pain, reviews, checklists, progressions) but keeps
+  // your meals, reminders and settings. Undo restores it.
+  restartToday(s) { s.days = {}; s.pain = []; s.weeklyReviews = {}; s.lists = {}; s.progression = {}; s.profile.startDate = ymd(); },
   deleteDay(s, date) { delete s.days[date]; s.pain = s.pain.filter((r) => r.date !== date); },
 };
 export { getDay, YOGA_STAGES };
